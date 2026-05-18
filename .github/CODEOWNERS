@@ -1,0 +1,22 @@
+# Code Owners
+
+# Default owners for everything in the repo
+*       @vidrev/maintainers
+
+# Source code
+/src/   @vidrev/core-team
+/utils/ @vidrev/core-team
+
+# CI/CD and config
+/.github/ @vidrev/ci-team
+config/   @vidrev/ops-team
+
+# Documentation
+/docs/   @vidrev/docs-team
+README.md @vidrev/maintainers
+
+# Tests
+/tests/  @vidrev/core-team
+
+# Scripts
+/scripts/ @vidrev/devops

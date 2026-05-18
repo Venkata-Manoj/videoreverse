@@ -1,0 +1,74 @@
+{
+  "runway_gen4_5": {
+    "label": "Runway Gen-4.5",
+    "template": "[Camera: {camera} | Framing: {framing}] {style} style video showing {action}. Set in {environment}. {lighting} Duration: {duration}s. {negative}",
+    "supports_negative": false,
+    "max_duration": 16,
+    "aspect_ratio_support": ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    "negative_placeholder": "",
+    "notes": "Camera direction must come first. Keep prompts concise. No negative prompt support."
+  },
+  "google_veo3_1": {
+    "label": "Google Veo 3.1",
+    "template": "{style}. {lighting}. A {duration}-second clip showing {action} in {environment}. Camera: {camera}, framed as {framing}. {color_grading}. {negative}",
+    "supports_negative": true,
+    "max_duration": 60,
+    "aspect_ratio_support": ["16:9", "9:16", "1:1"],
+    "negative_placeholder": "Avoid: {negative}",
+    "notes": "Thrives on environment physics, color grading, and realistic scene details. Supports negative prompts."
+  },
+  "kling_3_0": {
+    "label": "Kling 3.0",
+    "template": "{action}, captured via {camera} in {framing}. Location: {environment}. Style: {style}. Atmosphere: {lighting}. Duration: {duration}s. Color: {color_grading}. {negative}",
+    "supports_negative": true,
+    "max_duration": 30,
+    "aspect_ratio_support": ["16:9", "9:16", "1:1"],
+    "negative_placeholder": "Negative prompt: {negative}",
+    "notes": "Responds well to fluid action sequences, motion pacing terms, and atmospheric composition."
+  },
+  "sora_2": {
+    "label": "OpenAI Sora 2",
+    "template": "A {duration}-second video in {style}. {action}. The scene is set in {environment}, captured with {camera} and {framing}. Lighting: {lighting}. Color grading: {color_grading}. {negative}",
+    "supports_negative": true,
+    "max_duration": 60,
+    "aspect_ratio_support": ["16:9", "9:16", "1:1"],
+    "negative_placeholder": "Exclude: {negative}",
+    "notes": "Prefers natural language descriptions. Strong at physics simulation and complex motion."
+  },
+  "luma_dream_machine": {
+    "label": "Luma Dream Machine",
+    "template": "{style} video, {duration}s. {action}. {environment}. Shot with {camera}, {framing}. {lighting}. {color_grading}. {negative}",
+    "supports_negative": false,
+    "max_duration": 12,
+    "aspect_ratio_support": ["16:9", "9:16", "1:1"],
+    "negative_placeholder": "",
+    "notes": "Short clips only. Strong at realistic motion. Keep prompts under 200 characters for best results."
+  },
+  "pika_2": {
+    "label": "Pika 2.0",
+    "template": "{style}. {action}. {environment}. {camera}, {framing}. {lighting}. {negative}",
+    "supports_negative": true,
+    "max_duration": 10,
+    "aspect_ratio_support": ["16:9", "9:16", "1:1", "4:3"],
+    "negative_placeholder": "--no {negative}",
+    "notes": "Uses --no flag for negatives. Short duration. Good for stylized and animated content."
+  },
+  "haiper_2": {
+    "label": "Haiper 2.0",
+    "template": "{style} footage lasting {duration}s. {action} within {environment}. Camera uses {camera} with {framing}. {lighting}. {color_grading}. {negative}",
+    "supports_negative": false,
+    "max_duration": 8,
+    "aspect_ratio_support": ["16:9", "9:16"],
+    "negative_placeholder": "",
+    "notes": "Very short clips. Strong at photorealistic content. No negative prompt support."
+  },
+  "stable_video_diffusion": {
+    "label": "Stable Video Diffusion",
+    "template": "{style}, {action}, {environment}, {camera}, {framing}, {lighting}, {color_grading}, {negative}",
+    "supports_negative": true,
+    "max_duration": 4,
+    "aspect_ratio_support": ["16:9", "9:16", "1:1"],
+    "negative_placeholder": "negative prompt: {negative}",
+    "notes": "Very short clips. Comma-separated format works best. Strong negative prompt support."
+  }
+}

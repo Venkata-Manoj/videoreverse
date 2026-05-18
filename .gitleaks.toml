@@ -1,0 +1,33 @@
+# Gitleaks Configuration
+# https://github.com/gitleaks/gitleaks
+
+[allowlist]
+  description = "Allowed paths and patterns"
+  files = [
+    "^\\.gitignore$",
+    "^\\.env\\.example$",
+    "^output_blueprints/.*$"
+  ]
+  regexes = [
+    "^secret",
+    "^key"
+  ]
+
+[[rules]]
+  id = "gemini-api-key"
+  description = "Gemini API Key"
+  regex = '''gemini[-_]?api[-_]?key'''
+  secretGroup = 1
+
+[[rules]]
+  id = "generic-api-key"
+  description = "Generic API Key"
+  regex = '''(?i)(api[_-]?key|apikey|api[_-]?token)['\"]?[:=]?['\"]?[a-zA-Z0-9]{16,}'''
+
+[[rules]]
+  id = "environment-variable"
+  description = "Environment variable with secret"
+  regex = '''(?i)(password|secret|token|key|api)[_-]?(key|token|secret)?\s*[:=]\s*['\"][^'\"]{8,}['\"]'''
+
+[triggers]
+  allowlist = ["tests/", "docs/"]

@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  vidrev:
+    build: .
+    image: vidrev:latest
+    container_name: vidrev
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - VIDEO_REV_OUTPUT_DIR=/data/output
+      - VIDEO_REV_LOG_LEVEL=info
+    volumes:
+      - ./videos:/data/videos:ro
+      - ./output_blueprints:/data/output
+    args:
+      - VIDEO_REV_UID=1000
+      - VIDEO_REV_GID=1000
+    restart: unless-stopped
+    network_mode: bridge
+
+  # Optional: Watch mode for development
+  vidrev-watch:
+    build:
+      context: .
+      target: development
+    image: vidrev:dev
+    container_name: vidrev-dev
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - VIDEO_REV_LOG_LEVEL=debug
+    volumes:
+      - .:/app
+      - ./videos:/data/videos:ro
+      - ./output_blueprints:/data/output
+    command: node --watch src/main.js /data/videos/input.mp4
+    profile:
+      - watch

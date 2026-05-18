@@ -1,0 +1,38 @@
+{
+  "name": "vidrev",
+  "version": "1.0.0",
+  "description": "Universal Video-to-Prompt Pipeline — deconstruc video into prompts for 8+ video AI models",
+  "type": "module",
+  "main": "src/main.js",
+  "bin": {
+    "vidrev": "src/main.js"
+  },
+  "scripts": {
+    "start": "node src/main.js",
+    "pipeline": "node src/pipeline.js",
+    "ingest": "node src/ingest.js",
+    "test": "node src/run_tests.js",
+    "lint": "node scripts/lint.js",
+    "validate": "node scripts/validate.js",
+    "compare": "node utils/compare.js"
+  },
+  "keywords": [
+    "video",
+    "prompt",
+    "ai",
+    "video-generation",
+    "runway",
+    "sora",
+    "kling",
+    "gemini"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@google/genai": "^1.0.0"
+  },
+  "devDependencies": {}
+}

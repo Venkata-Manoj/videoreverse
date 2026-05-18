@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Generated outputs
+output_blueprints/
+.cache/
+test_results/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+dist/
+build/
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Secrets (never commit)
+*.pem
+*.key
+secrets/
+credentials/
+
+# Others
+TODO.md

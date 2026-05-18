@@ -1,0 +1,34 @@
+# Pre-commit hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=50000']
+      - id: check-merge-conflict
+
+  - repo: https://github.com/Lucas-C/pre-commit-hooks-nodejs
+    rev: v1.1.2
+    hooks:
+      - id: no-commit-to-branch
+        args: ['--branch', 'main', '--branch', 'master']
+
+  - repo: local
+    hooks:
+      - id: lint-js
+        name: Lint JavaScript
+        entry: node scripts/lint.js
+        language: system
+        files: \.js$
+        pass_filenames: false
+
+      - id: validate-outputs
+        name: Validate Outputs
+        entry: node scripts/validate.js
+        language: system
+        files: output_blueprints/
+        pass_filenames: false
