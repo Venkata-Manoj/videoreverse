@@ -6,7 +6,22 @@
     "max_duration": 16,
     "aspect_ratio_support": ["16:9", "9:16", "1:1", "4:3", "3:4"],
     "negative_placeholder": "",
-    "notes": "Camera direction must come first. Keep prompts concise. No negative prompt support."
+    "notes": "Camera direction must come first. Keep prompts concise. No negative prompt support.",
+    "enhancement_rules": {
+      "preferred_order": ["camera", "framing", "style", "action", "environment", "lighting", "duration"],
+      "keyword_injection": {
+        "camera_keywords": ["lens", "focal length", "aperture", "depth of field"],
+        "style_keywords": ["cinematic", "photorealistic", "film grain", "color graded"],
+        "action_keywords": ["smooth motion", "continuous movement", "natural physics"]
+      },
+      "prompt_guidelines": {
+        "max_length": 300,
+        "sentence_style": "concise",
+        "camera_first": true,
+        "avoid_adjectives": ["stunning", "breathtaking", "amazing"],
+        "prefer_specifics": ["50mm lens", "f/2.8", "shallow depth of field", "medium close-up"]
+      }
+    }
   },
   "google_veo3_1": {
     "label": "Google Veo 3.1",
@@ -15,7 +30,22 @@
     "max_duration": 60,
     "aspect_ratio_support": ["16:9", "9:16", "1:1"],
     "negative_placeholder": "Avoid: {negative}",
-    "notes": "Thrives on environment physics, color grading, and realistic scene details. Supports negative prompts."
+    "notes": "Thrives on environment physics, color grading, and realistic scene details. Supports negative prompts.",
+    "enhancement_rules": {
+      "preferred_order": ["style", "lighting", "action", "environment", "camera", "framing", "color_grading"],
+      "keyword_injection": {
+        "environment_keywords": ["realistic physics", "natural lighting interaction", "spatial depth", "atmospheric perspective"],
+        "color_keywords": ["color palette", "tonal range", "color temperature", "saturation level"],
+        "physics_keywords": ["gravity", "momentum", "fluid dynamics", "light reflection", "shadow casting"]
+      },
+      "prompt_guidelines": {
+        "max_length": 500,
+        "sentence_style": "descriptive",
+        "emphasize_physics": true,
+        "emphasize_environment": true,
+        "prefer_specifics": ["warm golden hour light", "cool blue shadows", "volumetric fog", "natural color grading"]
+      }
+    }
   },
   "kling_3_0": {
     "label": "Kling 3.0",
@@ -24,7 +54,22 @@
     "max_duration": 30,
     "aspect_ratio_support": ["16:9", "9:16", "1:1"],
     "negative_placeholder": "Negative prompt: {negative}",
-    "notes": "Responds well to fluid action sequences, motion pacing terms, and atmospheric composition."
+    "notes": "Responds well to fluid action sequences, motion pacing terms, and atmospheric composition.",
+    "enhancement_rules": {
+      "preferred_order": ["action", "camera", "framing", "environment", "style", "lighting", "duration", "color_grading"],
+      "keyword_injection": {
+        "motion_keywords": ["fluid motion", "smooth tracking", "dynamic movement", "continuous flow", "natural pacing"],
+        "atmosphere_keywords": ["moody atmosphere", "ambient lighting", "cinematic mood", "dramatic tension"],
+        "pacing_keywords": ["slow motion", "real-time", "accelerated", "rhythmic movement"]
+      },
+      "prompt_guidelines": {
+        "max_length": 400,
+        "sentence_style": "action-first",
+        "emphasize_motion": true,
+        "emphasize_atmosphere": true,
+        "prefer_specifics": ["smooth gimbal tracking", "slow-motion capture", "dramatic backlighting", "moody atmosphere"]
+      }
+    }
   },
   "sora_2": {
     "label": "OpenAI Sora 2",
@@ -33,7 +78,22 @@
     "max_duration": 60,
     "aspect_ratio_support": ["16:9", "9:16", "1:1"],
     "negative_placeholder": "Exclude: {negative}",
-    "notes": "Prefers natural language descriptions. Strong at physics simulation and complex motion."
+    "notes": "Prefers natural language descriptions. Strong at physics simulation and complex motion.",
+    "enhancement_rules": {
+      "preferred_order": ["duration", "style", "action", "environment", "camera", "framing", "lighting", "color_grading"],
+      "keyword_injection": {
+        "temporal_keywords": ["over the course of", "gradually", "in sequence", "as time progresses", "moment by moment"],
+        "physics_keywords": ["realistic physics", "natural motion", "accurate gravity", "proper momentum", "realistic interaction"],
+        "narrative_keywords": ["the scene unfolds", "progressively", "building toward", "culminating in"]
+      },
+      "prompt_guidelines": {
+        "max_length": 600,
+        "sentence_style": "narrative",
+        "emphasize_temporal_flow": true,
+        "emphasize_physics": true,
+        "prefer_specifics": ["the camera slowly reveals", "as the action progresses", "natural light shifts", "realistic object interaction"]
+      }
+    }
   },
   "luma_dream_machine": {
     "label": "Luma Dream Machine",
@@ -42,7 +102,21 @@
     "max_duration": 12,
     "aspect_ratio_support": ["16:9", "9:16", "1:1"],
     "negative_placeholder": "",
-    "notes": "Short clips only. Strong at realistic motion. Keep prompts under 200 characters for best results."
+    "notes": "Short clips only. Strong at realistic motion. Keep prompts under 200 characters for best results.",
+    "enhancement_rules": {
+      "preferred_order": ["style", "duration", "action", "environment", "camera", "framing", "lighting"],
+      "keyword_injection": {
+        "motion_keywords": ["realistic motion", "natural movement", "smooth animation"],
+        "brevity_keywords": ["", "", ""]
+      },
+      "prompt_guidelines": {
+        "max_length": 200,
+        "sentence_style": "ultra-concise",
+        "emphasize_brevity": true,
+        "emphasize_realism": true,
+        "prefer_specifics": ["photorealistic", "natural motion", "clean composition"]
+      }
+    }
   },
   "pika_2": {
     "label": "Pika 2.0",
@@ -51,7 +125,22 @@
     "max_duration": 10,
     "aspect_ratio_support": ["16:9", "9:16", "1:1", "4:3"],
     "negative_placeholder": "--no {negative}",
-    "notes": "Uses --no flag for negatives. Short duration. Good for stylized and animated content."
+    "notes": "Uses --no flag for negatives. Short duration. Good for stylized and animated content.",
+    "enhancement_rules": {
+      "preferred_order": ["style", "action", "environment", "camera", "framing", "lighting"],
+      "keyword_injection": {
+        "style_keywords": ["animated", "stylized", "illustrated", "cartoon", "anime-inspired", "motion graphics"],
+        "animation_keywords": ["smooth animation", "frame-by-frame", "cel-shaded", "vector art"],
+        "vibe_keywords": ["playful", "whimsical", "dreamy", "ethereal"]
+      },
+      "prompt_guidelines": {
+        "max_length": 250,
+        "sentence_style": "stylized",
+        "emphasize_style": true,
+        "emphasize_animation": true,
+        "prefer_specifics": ["smooth animated motion", "stylized rendering", "vibrant colors", "playful atmosphere"]
+      }
+    }
   },
   "haiper_2": {
     "label": "Haiper 2.0",
@@ -60,7 +149,21 @@
     "max_duration": 8,
     "aspect_ratio_support": ["16:9", "9:16"],
     "negative_placeholder": "",
-    "notes": "Very short clips. Strong at photorealistic content. No negative prompt support."
+    "notes": "Very short clips. Strong at photorealistic content. No negative prompt support.",
+    "enhancement_rules": {
+      "preferred_order": ["style", "duration", "action", "environment", "camera", "framing", "lighting", "color_grading"],
+      "keyword_injection": {
+        "realism_keywords": ["photorealistic", "hyper-detailed", "true-to-life", "natural textures"],
+        "quality_keywords": ["high fidelity", "sharp focus", "clean composition", "professional grade"]
+      },
+      "prompt_guidelines": {
+        "max_length": 200,
+        "sentence_style": "photorealistic",
+        "emphasize_realism": true,
+        "emphasize_quality": true,
+        "prefer_specifics": ["photorealistic rendering", "natural skin tones", "accurate lighting", "sharp detail"]
+      }
+    }
   },
   "stable_video_diffusion": {
     "label": "Stable Video Diffusion",
@@ -69,6 +172,20 @@
     "max_duration": 4,
     "aspect_ratio_support": ["16:9", "9:16", "1:1"],
     "negative_placeholder": "negative prompt: {negative}",
-    "notes": "Very short clips. Comma-separated format works best. Strong negative prompt support."
+    "notes": "Very short clips. Comma-separated format works best. Strong negative prompt support.",
+    "enhancement_rules": {
+      "preferred_order": ["style", "action", "environment", "camera", "framing", "lighting", "color_grading"],
+      "keyword_injection": {
+        "comma_keywords": ["", "", ""],
+        "negative_keywords": ["blurry", "low quality", "distorted", "unnatural", "artifacts", "noise", "deformed"]
+      },
+      "prompt_guidelines": {
+        "max_length": 150,
+        "sentence_style": "comma-separated",
+        "emphasize_comma_format": true,
+        "emphasize_negative": true,
+        "prefer_specifics": ["masterpiece", "best quality", "high resolution", "sharp focus"]
+      }
+    }
   }
 }

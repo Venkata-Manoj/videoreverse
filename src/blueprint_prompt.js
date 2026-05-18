@@ -11,7 +11,12 @@ Analyze the uploaded video and output a structured JSON blueprint. Handle ALL vi
 - Product showcases, unboxing videos
 - Educational content, lectures, webinars
 
-For each shot, describe exactly what happens with enough detail that another creator could reproduce it. Include camera movements, subject actions, lighting, environment, and any on-screen text or graphics.`;
+For each shot, describe exactly what happens with enough detail that another creator could reproduce it. Include camera movements, subject actions, lighting, environment, and any on-screen text or graphics.
+
+IMPORTANT: For each shot, you MUST:
+1. Identify which frames from the provided timeline most informed this shot
+2. Correlate shot start/end times with frame timestamps
+3. Create traceability between your analysis and the source frames`;
 
 const BLUEPRINT_SCHEMA = {
     type: 'OBJECT',
@@ -22,6 +27,7 @@ const BLUEPRINT_SCHEMA = {
                 art_style: { type: 'STRING', description: 'Overall visual style (e.g., photorealistic CGI, live-action documentary, 2D anime, stop-motion, screen recording, drone aerial, vlog handheld)' },
                 color_grading: { type: 'STRING', description: 'Color palette and grading approach (e.g., warm golden hour, cool blue tones, high-contrast neon, natural daylight, desaturated moody)' },
                 lighting_setup: { type: 'STRING', description: 'Lighting configuration (e.g., soft diffused studio lights, harsh direct sunlight, neon-lit night scene, natural window light, fluorescent office lighting)' },
+                _audio_mood: { type: 'STRING', description: 'Audio mood classification (e.g., dynamic, contemplative, documentary, atmospheric)' },
             },
             required: ['art_style', 'color_grading', 'lighting_setup'],
         },
@@ -32,6 +38,8 @@ const BLUEPRINT_SCHEMA = {
                 type: 'OBJECT',
                 properties: {
                     shot_index: { type: 'INTEGER', description: 'Zero-based sequential index' },
+                    start_time_seconds: { type: 'NUMBER', format: 'float', description: 'When this shot begins in the video (seconds)' },
+                    end_time_seconds: { type: 'NUMBER', format: 'float', description: 'When this shot ends in the video (seconds)' },
                     duration_seconds: { type: 'NUMBER', format: 'float', description: 'Approximate duration of this shot in seconds' },
                     camera_direction: { type: 'STRING', description: 'Camera movement and lens behavior (e.g., static tripod, slow push-in, handheld shake, smooth gimbal pan, drone orbit, zoom rack focus, whip pan, tilt down)' },
                     framing_type: { type: 'STRING', description: 'Shot framing (e.g., extreme wide establishing, wide, medium wide, medium, medium close-up, close-up, extreme close-up, over-the-shoulder, point-of-view, top-down bird\'s-eye, low-angle hero, dutch angle)' },
@@ -42,8 +50,39 @@ const BLUEPRINT_SCHEMA = {
                         description: 'Visual elements that should NOT appear or that are absent in this shot (e.g., no people in background, no text overlays, no watermarks, no lens flare, no motion blur)',
                         items: { type: 'STRING' },
                     },
+                    frame_references: {
+                        type: 'ARRAY',
+                        description: 'Which extracted frames informed this shot analysis. Correlate with peepshow timeline frames.',
+                        items: {
+                            type: 'OBJECT',
+                            properties: {
+                                frame_index: { type: 'INTEGER', description: 'Zero-based index of the frame in the timeline_frames array' },
+                                timestamp_seconds: { type: 'NUMBER', format: 'float', description: 'Timestamp of this frame in seconds' },
+                                motion_level: { type: 'STRING', description: 'Motion level at this frame: low, medium, or high' },
+                                relevance: { type: 'STRING', description: 'How relevant this frame is: key_frame, transition_frame, or supporting' },
+                            },
+                        },
+                    },
+                    shot_boundaries: {
+                        type: 'OBJECT',
+                        description: 'Information about how this shot boundary was determined',
+                        properties: {
+                            detected_by: { type: 'STRING', description: 'How the boundary was detected: motion_change, scene_cut, audio_cue, manual' },
+                            confidence: { type: 'STRING', description: 'Confidence level: high, medium, low' },
+                            correlated_frames: { type: 'ARRAY', items: { type: 'INTEGER' }, description: 'Frame indices at the boundary' },
+                        },
+                    },
                 },
-                required: ['shot_index', 'duration_seconds', 'camera_direction', 'framing_type', 'action_and_motion', 'environment_context', 'negative_elements'],
+                required: ['shot_index', 'start_time_seconds', 'end_time_seconds', 'duration_seconds', 'camera_direction', 'framing_type', 'action_and_motion', 'environment_context', 'negative_elements', 'frame_references'],
+            },
+        },
+        _metadata: {
+            type: 'OBJECT',
+            description: 'Internal tracking metadata',
+            properties: {
+                total_frames_analyzed: { type: 'INTEGER', description: 'Total frames from peepshow used in analysis' },
+                shots_with_frame_traceability: { type: 'INTEGER', description: 'Number of shots with valid frame references' },
+                analysis_timestamp: { type: 'STRING', description: 'ISO timestamp of when analysis was performed' },
             },
         },
     },

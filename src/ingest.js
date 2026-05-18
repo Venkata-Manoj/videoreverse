@@ -1,8 +1,6 @@
-const { exec } = require('child_process');
-const { promisify } = require('util');
-const path = require('path');
-
-const execAsync = promisify(exec);
+import { execSync } from 'child_process';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
 
 function normalizePath(target) {
     if (typeof target !== 'string') return target;
@@ -18,9 +16,12 @@ function normalizePath(target) {
 }
 
 function checkPeepshow() {
-    return execAsync('peepshow --help', { maxBuffer: 1024 * 1024 })
-        .then(({ stdout }) => stdout.includes('peepshow'))
-        .catch(() => false);
+    try {
+        const result = execSync('peepshow --help', { maxBuffer: 1024 * 1024, encoding: 'utf8' });
+        return result.includes('peepshow');
+    } catch {
+        return false;
+    }
 }
 
 async function ingestVideo(videoTarget) {
@@ -30,7 +31,7 @@ async function ingestVideo(videoTarget) {
     if (normalized !== videoTarget) console.log(`   → Resolved: ${normalized}`);
     console.log();
 
-    const peepshowAvailable = await checkPeepshow();
+    const peepshowAvailable = checkPeepshow();
     if (!peepshowAvailable) {
         console.error(`❌ peepshow not found on PATH.`);
         console.error(`   Fix: npm i -g peepshow`);
@@ -41,14 +42,12 @@ async function ingestVideo(videoTarget) {
     try {
         const escaped = normalized.replace(/"/g, '\\"');
         const command = `peepshow "${escaped}" --emit json --stats off`;
-        const { stdout, stderr } = await execAsync(command, {
+        
+        const stdout = execSync(command, {
             maxBuffer: 1024 * 1024 * 10,
-            shell: '/bin/bash'
+            encoding: 'utf8',
+            shell: '/bin/bash',
         });
-
-        if (stderr && !stdout) {
-            throw new Error(`peepshow failed: ${stderr.trim()}`);
-        }
 
         const jsonStart = stdout.indexOf('{');
         const jsonEnd = stdout.lastIndexOf('}');
@@ -62,8 +61,8 @@ async function ingestVideo(videoTarget) {
             : path.basename(normalized);
 
         const hasAudio = !!(raw.audio?.path && !raw.audio.skippedReason);
-
         const audioMood = analyzeAudioMood(raw.audio);
+        const timelineFrames = extractFrameMetadata(raw.frames, raw.video?.fps || 30);
 
         return {
             pipeline_step: '1_ingestion_and_sampling',
@@ -96,17 +95,46 @@ async function ingestVideo(videoTarget) {
                 frames_deduped: raw.extraction?.framesDeduped || 0,
                 elapsed_ms: raw.extraction?.elapsedMs || 0,
             },
-            timeline_frames: (raw.frames || []).map((f, i) => ({
-                index: i,
-                path: f.path,
-                bytes: f.bytes,
-            })),
+            timeline_frames: timelineFrames,
             output_dir: raw.outputDir || null,
         };
     } catch (error) {
         console.error(`❌ Step 1 failed:`, error.message);
         throw error;
     }
+}
+
+function extractFrameMetadata(frames, fps) {
+    if (!frames || !Array.isArray(frames)) return [];
+
+    return frames.map((f, i) => {
+        const estimatedTimestamp = fps > 0 ? i / fps : 0;
+
+        let motionLevel = 'medium';
+        if (f.bytes) {
+            if (f.bytes < 30000) motionLevel = 'low';
+            else if (f.bytes > 150000) motionLevel = 'high';
+        }
+
+        return {
+            index: i,
+            path: f.path,
+            bytes: f.bytes || 0,
+            timestamp_seconds: f.timestampSeconds || estimatedTimestamp,
+            motion_level: f.motionLevel || motionLevel,
+            frame_hash: f.hash || generateSimpleHash(f.path + i),
+        };
+    });
+}
+
+function generateSimpleHash(input) {
+    let hash = 0;
+    for (let i = 0; i < input.length; i++) {
+        const char = input.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    return Math.abs(hash).toString(16).padStart(8, '0');
 }
 
 function computeAspectRatio(w, h) {
@@ -132,18 +160,10 @@ function analyzeAudioMood(audio) {
 
     let mood = 'neutral';
 
-    if (moodIndicators.silence_dominant) {
-        mood = 'contemplative';
-    }
-    if (moodIndicators.ambient) {
-        mood = 'atmospheric';
-    }
-    if (moodIndicators.music_detected && silenceRatio < 0.2) {
-        mood = 'dynamic';
-    }
-    if (moodIndicators.transcript_heavy) {
-        mood = 'documentary';
-    }
+    if (moodIndicators.silence_dominant) mood = 'contemplative';
+    if (moodIndicators.ambient) mood = 'atmospheric';
+    if (moodIndicators.music_detected && silenceRatio < 0.2) mood = 'dynamic';
+    if (moodIndicators.transcript_heavy) mood = 'documentary';
 
     const keywords = {
         tense: ['tension', 'fear', 'danger', 'alarm', 'worried'],
@@ -167,21 +187,4 @@ function analyzeAudioMood(audio) {
     };
 }
 
-if (require.main === module) {
-    const target = process.argv[2];
-    if (!target) {
-        console.error('Usage: node ingest.js <video_path_or_url>');
-        process.exit(1);
-    }
-    ingestVideo(target)
-        .then((result) => {
-            console.log('✅ Step 1 complete!');
-            console.log(JSON.stringify(result, null, 2));
-        })
-        .catch((err) => {
-            console.error('💥 Failed:', err.message);
-            process.exit(1);
-        });
-}
-
-module.exports = { ingestVideo, normalizePath };
+export { ingestVideo, normalizePath };

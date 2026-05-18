@@ -26,7 +26,7 @@ if (!apiKey) throw new Error('GEMINI_API_KEY not found in .env or environment');
 const ai = new GoogleGenAI({ apiKey });
 
 async function buildBlueprint(videoPath, step1Data, options = {}) {
-    console.log(`🧠 VideoReverse: Step 3 — Blueprint Synthesis`);
+    console.log(`🧠 VideoReverse: Step 3 — Blueprint Synthesis (Frame-Aware)`);
     console.log(`📡 Uploading video to Gemini File API...`);
 
     const normalized = videoPath;
@@ -63,12 +63,15 @@ async function buildBlueprint(videoPath, step1Data, options = {}) {
         const metadata = step1Data?.video_metadata || {};
         const audio = step1Data?.audio_data || {};
         const extraction = step1Data?.extraction || {};
+        const timelineFrames = step1Data?.timeline_frames || [];
+
+        const frameContext = buildFrameContext(timelineFrames);
 
         const audioInfo = audio.mood?.mood 
             ? `Audio mood: ${audio.mood.mood}`
             : `Audio: ${audio.has_audio ? 'Yes' : 'No'}`;
         
-        const userPrompt = `Analyze this video and produce a complete production blueprint.
+        const userPrompt = `Analyze this video and produce a complete production blueprint with frame-aware analysis.
 
 Technical context from local analysis:
 - Duration: ${metadata.duration_seconds || 'unknown'}s
@@ -76,17 +79,24 @@ Technical context from local analysis:
 - FPS: ${metadata.fps || 0}
 - Codec: ${metadata.codec || 'unknown'}
 - Motion level: ${extraction.motion_signal_level || 'unknown'}
-- Frames extracted: ${extraction.frames_emitted || 0}
+${frameContext}
 - ${audioInfo}${audio.transcript ? ` — Transcript: "${audio.transcript}"` : ''}
 ${audio.mood?.indicators ? `- Audio profile: ${Object.entries(audio.mood.indicators).filter(([,v]) => v).map(([k]) => k).join(', ') || 'none'}` : ''}
 
 Break the video into chronological shots. For each shot, describe:
-1. How long it lasts
+1. How long it lasts (use start_time_seconds and end_time_seconds)
 2. What the camera is doing (static, panning, zooming, handheld, etc.)
 3. How the scene is framed (wide, close-up, etc.)
 4. Exactly what happens — actions, movements, expressions, physics
 5. The environment and background details
 6. What is NOT present (negative elements)
+
+CRITICAL - Frame Reference Requirements:
+For EACH shot, you MUST include a frame_references array that:
+- Lists which timeline frames (by index) informed this shot
+- Correlates shot times with frame timestamps
+- Indicates frame relevance (key_frame, transition_frame, supporting)
+- Shows which frames triggered the shot boundary
 
 Also identify the overall art style, color grading, and lighting setup.`;
 
@@ -109,7 +119,11 @@ Also identify the overall art style, color grading, and lighting setup.`;
             systemInstruction += ' Low motion content - emphasize static compositions.';
         }
 
-        console.log(`🔍 Sending to Gemini for multimodal analysis...`);
+        systemInstruction += `\n\nFrame-aware analysis enabled. Total frames in timeline: ${timelineFrames.length}.
+Each shot MUST include frame_references correlating to the timeline.`;
+
+        console.log(`🔍 Sending to Gemini for frame-aware multimodal analysis...`);
+        console.log(`   → Frame context: ${timelineFrames.length} frames available`);
 
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
@@ -134,7 +148,23 @@ Also identify the overall art style, color grading, and lighting setup.`;
             blueprint.global_aesthetic._audio_mood = audio.mood.mood;
         }
 
-        console.log(`✅ Blueprint generated: ${blueprint.chronological_shots.length} shots identified`);
+        blueprint._metadata = {
+            total_frames_analyzed: timelineFrames.length,
+            shots_with_frame_traceability: blueprint.chronological_shots.filter(s => 
+                s.frame_references && s.frame_references.length > 0
+            ).length,
+            analysis_timestamp: new Date().toISOString(),
+            frame_timeline: timelineFrames.map(f => ({
+                index: f.index,
+                timestamp_seconds: f.timestamp_seconds,
+                motion_level: f.motion_level,
+            })),
+        };
+
+        console.log(`✅ Frame-aware blueprint generated:`);
+        console.log(`   → ${blueprint.chronological_shots.length} shots identified`);
+        console.log(`   → ${blueprint._metadata.shots_with_frame_traceability} shots with frame traceability`);
+
         return blueprint;
 
     } finally {
@@ -147,6 +177,46 @@ Also identify the overall art style, color grading, and lighting setup.`;
             }
         }
     }
+}
+
+function buildFrameContext(timelineFrames) {
+    if (!timelineFrames || timelineFrames.length === 0) {
+        return '- Frames extracted: 0';
+    }
+
+    const lines = ['- Frame timeline (peepshow extracted keyframes):'];
+    
+    lines.push(`  Total frames: ${timelineFrames.length}`);
+
+    const highMotionFrames = timelineFrames.filter(f => f.motion_level === 'high');
+    const lowMotionFrames = timelineFrames.filter(f => f.motion_level === 'low');
+
+    if (highMotionFrames.length > 0) {
+        const indices = highMotionFrames.slice(0, 5).map(f => f.index).join(', ');
+        const more = highMotionFrames.length > 5 ? ` (+${highMotionFrames.length - 5} more)` : '';
+        lines.push(`  High motion frames: [${indices}]${more}`);
+    }
+
+    if (lowMotionFrames.length > 0) {
+        const indices = lowMotionFrames.slice(0, 5).map(f => f.index).join(', ');
+        const more = lowMotionFrames.length > 5 ? ` (+${lowMotionFrames.length - 5} more)` : '';
+        lines.push(`  Low motion frames: [${indices}]${more}`);
+    }
+
+    lines.push('');
+    lines.push('  Frame details (format: [index] @timestamp_s - motion):');
+    
+    for (const frame of timelineFrames.slice(0, 20)) {
+        const ts = frame.timestamp_seconds?.toFixed(2) || '0.00';
+        const motion = frame.motion_level || 'medium';
+        lines.push(`    [${frame.index}] @ ${ts}s - ${motion}`);
+    }
+
+    if (timelineFrames.length > 20) {
+        lines.push(`    ... and ${timelineFrames.length - 20} more frames`);
+    }
+
+    return lines.join('\n');
 }
 
 export { buildBlueprint };

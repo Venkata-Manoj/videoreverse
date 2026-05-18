@@ -1,5 +1,5 @@
 import { sanitizeBlueprint } from './validation.js';
-import { compilePrompts } from '../compile.js';
+import { compilePrompts } from '../src/compile.js';
 
 export class FallbackMode {
     constructor() {

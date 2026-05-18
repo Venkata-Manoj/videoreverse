@@ -27,6 +27,80 @@ function fillTemplate(template, vars) {
     return result;
 }
 
+function applyEnhancementRules(prompt, modelConfig) {
+    const rules = modelConfig.enhancement_rules;
+    if (!rules) return prompt;
+
+    let enhanced = prompt;
+    const guidelines = rules.prompt_guidelines || {};
+
+    // Inject model-specific keywords that improve output quality
+    const keywords = rules.keyword_injection || {};
+    const keywordPhrases = [];
+
+    for (const [category, words] of Object.entries(keywords)) {
+        if (Array.isArray(words)) {
+            keywordPhrases.push(...words.filter(w => w && w.length > 0));
+        }
+    }
+
+    // Add relevant keywords to the prompt if they complement existing content
+    if (keywordPhrases.length > 0) {
+        const lowerPrompt = enhanced.toLowerCase();
+        const relevantKeywords = keywordPhrases.filter(kw =>
+            !lowerPrompt.includes(kw.toLowerCase()) &&
+            !lowerPrompt.includes(kw.toLowerCase().split(' ')[0])
+        );
+
+        if (relevantKeywords.length > 0) {
+            const injectCount = Math.min(relevantKeywords.length, 2);
+            const toInject = relevantKeywords.slice(0, injectCount).join(', ');
+
+            if (guidelines.emphasize_comma_format) {
+                enhanced = `${enhanced}, ${toInject}`;
+            } else if (guidelines.emphasize_physics || guidelines.emphasize_environment) {
+                enhanced = `${enhanced}. ${toInject}.`;
+            } else if (guidelines.emphasize_motion || guidelines.emphasize_atmosphere) {
+                enhanced = `${enhanced}. ${toInject}.`;
+            } else if (guidelines.emphasize_temporal_flow) {
+                enhanced = `${enhanced}. ${toInject}.`;
+            } else if (guidelines.emphasize_style || guidelines.emphasize_animation) {
+                enhanced = `${enhanced}. ${toInject}.`;
+            } else if (guidelines.emphasize_realism || guidelines.emphasize_quality) {
+                enhanced = `${enhanced}. ${toInject}.`;
+            } else {
+                enhanced = `${enhanced}. ${toInject}.`;
+            }
+        }
+    }
+
+    // Remove discouraged adjectives
+    if (guidelines.avoid_adjectives) {
+        for (const adj of guidelines.avoid_adjectives) {
+            enhanced = enhanced.replace(new RegExp(`\\b${adj}\\b`, 'gi'), '');
+        }
+        enhanced = enhanced.replace(/\s{2,}/g, ' ').trim();
+    }
+
+    // Enforce max length by truncating at sentence boundary
+    if (guidelines.max_length && enhanced.length > guidelines.max_length) {
+        const truncated = enhanced.slice(0, guidelines.max_length);
+        const lastSentenceEnd = Math.max(
+            truncated.lastIndexOf('. '),
+            truncated.lastIndexOf('! '),
+            truncated.lastIndexOf('? ')
+        );
+        enhanced = lastSentenceEnd > guidelines.max_length * 0.6
+            ? truncated.slice(0, lastSentenceEnd + 1)
+            : truncated;
+    }
+
+    // Clean up trailing punctuation
+    enhanced = enhanced.replace(/[\s.,]+$/, '').trim();
+
+    return enhanced;
+}
+
 function compilePrompts(blueprint, videoMetadata, filterModels = null) {
     console.log(`⚙️  VideoReverse: Step 6 — Prompt Compilation`);
 
@@ -67,7 +141,10 @@ function compilePrompts(blueprint, videoMetadata, filterModels = null) {
                 aspect_ratio: modelConfig.aspect_ratio_support.includes(aspectRatio) ? aspectRatio : modelConfig.aspect_ratio_support[0],
             };
 
-            const prompt = fillTemplate(modelConfig.template, vars);
+            let prompt = fillTemplate(modelConfig.template, vars);
+
+            // Apply model-specific enhancement rules
+            prompt = applyEnhancementRules(prompt, modelConfig);
 
             modelPrompts.push({
                 shot_index: shot.shot_index ?? modelPrompts.length,
