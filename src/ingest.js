@@ -96,6 +96,7 @@ async function ingestVideo(videoTarget) {
                 elapsed_ms: raw.extraction?.elapsedMs || 0,
             },
             timeline_frames: timelineFrames,
+            scene_changes: timelineFrames.scene_changes || [],
             output_dir: raw.outputDir || null,
         };
     } catch (error) {
@@ -107,7 +108,7 @@ async function ingestVideo(videoTarget) {
 function extractFrameMetadata(frames, fps) {
     if (!frames || !Array.isArray(frames)) return [];
 
-    return frames.map((f, i) => {
+    const frameData = frames.map((f, i) => {
         const estimatedTimestamp = fps > 0 ? i / fps : 0;
 
         let motionLevel = 'medium';
@@ -125,6 +126,44 @@ function extractFrameMetadata(frames, fps) {
             frame_hash: f.hash || generateSimpleHash(f.path + i),
         };
     });
+
+    const sceneChanges = detectSceneChanges(frameData);
+    frameData.scene_changes = sceneChanges;
+
+    return frameData;
+}
+
+function detectSceneChanges(frames) {
+    if (!frames || frames.length < 2) return [];
+
+    const sceneChanges = [];
+    const motionThreshold = 2.5;
+    const bytesThreshold = 0.4;
+
+    for (let i = 1; i < frames.length; i++) {
+        const prev = frames[i - 1];
+        const curr = frames[i];
+
+        const motionChanged = prev.motion_level !== curr.motion_level;
+        const bytesRatio = prev.bytes > 0 ? Math.abs(curr.bytes - prev.bytes) / prev.bytes : 0;
+        const isSignificantMotionChange = (prev.motion_level === 'high' && curr.motion_level === 'low') ||
+                                           (prev.motion_level === 'low' && curr.motion_level === 'high');
+        const isBytesSpike = bytesRatio > bytesThreshold;
+
+        if (isSignificantMotionChange || isBytesSpike) {
+            sceneChanges.push({
+                index: i,
+                timestamp_seconds: curr.timestamp_seconds,
+                type: isBytesSpike ? 'scene_cut' : 'motion_change',
+                confidence: isBytesSpike && isSignificantMotionChange ? 'high' : 'medium',
+                from_motion: prev.motion_level,
+                to_motion: curr.motion_level,
+                bytes_change_ratio: bytesRatio.toFixed(2),
+            });
+        }
+    }
+
+    return sceneChanges;
 }
 
 function generateSimpleHash(input) {

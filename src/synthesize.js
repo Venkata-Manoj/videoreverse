@@ -64,8 +64,10 @@ async function buildBlueprint(videoPath, step1Data, options = {}) {
         const audio = step1Data?.audio_data || {};
         const extraction = step1Data?.extraction || {};
         const timelineFrames = step1Data?.timeline_frames || [];
+        const sceneChanges = step1Data?.scene_changes || [];
 
         const frameContext = buildFrameContext(timelineFrames);
+        const shotBoundaryHints = buildShotBoundaryHints(sceneChanges);
 
         const audioInfo = audio.mood?.mood 
             ? `Audio mood: ${audio.mood.mood}`
@@ -98,7 +100,12 @@ For EACH shot, you MUST include a frame_references array that:
 - Indicates frame relevance (key_frame, transition_frame, supporting)
 - Shows which frames triggered the shot boundary
 
-Also identify the overall art style, color grading, and lighting setup.`;
+Also identify the overall art style, color grading, and lighting setup.
+
+${shotBoundaryHints ? `CRITICAL - Shot Boundary Hints:
+The following timestamps were identified as likely shot boundaries from local frame analysis:
+${shotBoundaryHints}
+Use these timestamps as hints to guide your shot segmentation. Validate against actual scene changes in the video.` : ''}`;
 
         let systemInstruction = BLUEPRINT_SYSTEM_PROMPT;
         
@@ -124,6 +131,9 @@ Each shot MUST include frame_references correlating to the timeline.`;
 
         console.log(`🔍 Sending to Gemini for frame-aware multimodal analysis...`);
         console.log(`   → Frame context: ${timelineFrames.length} frames available`);
+        if (sceneChanges.length > 0) {
+            console.log(`   → Shot boundary hints: ${sceneChanges.length} potential cut points detected`);
+        }
 
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
@@ -159,11 +169,32 @@ Each shot MUST include frame_references correlating to the timeline.`;
                 timestamp_seconds: f.timestamp_seconds,
                 motion_level: f.motion_level,
             })),
+            detected_scene_changes: sceneChanges.map(sc => ({
+                index: sc.index,
+                timestamp_seconds: sc.timestamp_seconds,
+                type: sc.type,
+                confidence: sc.confidence,
+            })),
         };
 
         console.log(`✅ Frame-aware blueprint generated:`);
         console.log(`   → ${blueprint.chronological_shots.length} shots identified`);
         console.log(`   → ${blueprint._metadata.shots_with_frame_traceability} shots with frame traceability`);
+
+        if (sceneChanges.length > 0) {
+            const shotCount = blueprint.chronological_shots.length;
+            const expectedShots = sceneChanges.length + 1;
+            const variance = Math.abs(shotCount - expectedShots);
+            if (variance > 2) {
+                console.log(`   ⚠️ Shot count mismatch: expected ~${expectedShots} shots based on ${sceneChanges.length} detected cut points, got ${shotCount}`);
+                blueprint._metadata.shot_count_warning = {
+                    expected_based_on_scene_changes: expectedShots,
+                    actual_shots: shotCount,
+                    variance: variance,
+                    message: 'Gemini shot count differs significantly from local scene detection - verify accuracy',
+                };
+            }
+        }
 
         return blueprint;
 
@@ -217,6 +248,17 @@ function buildFrameContext(timelineFrames) {
     }
 
     return lines.join('\n');
+}
+
+function buildShotBoundaryHints(sceneChanges) {
+    if (!sceneChanges || sceneChanges.length === 0) return null;
+
+    const hints = sceneChanges.map(sc => {
+        const ts = sc.timestamp_seconds?.toFixed(2) || '0.00';
+        return `- ${ts}s: ${sc.type} (${sc.confidence} confidence)`;
+    }).join('\n');
+
+    return `Detected ${sceneChanges.length} potential cut points:\n${hints}`;
 }
 
 export { buildBlueprint };
