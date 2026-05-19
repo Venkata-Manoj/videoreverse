@@ -6,20 +6,25 @@
     "max_duration": 16,
     "aspect_ratio_support": ["16:9", "9:16", "1:1", "4:3", "3:4"],
     "negative_placeholder": "",
-    "notes": "Camera direction must come first. Keep prompts concise. No negative prompt support.",
+    "notes": "Camera direction must come first. Keep prompts concise. No negative prompt support. Excels at cinematic realism and precise camera control.",
     "enhancement_rules": {
       "preferred_order": ["camera", "framing", "style", "action", "environment", "lighting", "duration"],
       "keyword_injection": {
-        "camera_keywords": ["lens", "focal length", "aperture", "depth of field"],
-        "style_keywords": ["cinematic", "photorealistic", "film grain", "color graded"],
-        "action_keywords": ["smooth motion", "continuous movement", "natural physics"]
+        "camera_keywords": ["35mm lens", "50mm lens", "85mm lens", "f/2.8", "f/4", "shallow depth of field", "rack focus", "tilt-shift", "anamorphic lens", "prime lens"],
+        "framing_keywords": ["extreme wide establishing", "wide shot", "medium wide", "medium shot", "medium close-up", "close-up", "extreme close-up", "over-the-shoulder", "point-of-view", "low-angle", "high-angle", "dutch angle", "top-down"],
+        "style_keywords": ["cinematic", "photorealistic", "film grain", "color graded", "anamorphic bokeh", "HDR", "film stock emulation"],
+        "action_keywords": ["smooth motion", "continuous movement", "natural physics", "subtle micro-movements", "organic motion"],
+        "lighting_keywords": ["golden hour", "blue hour", "studio lighting", "natural window light", "volumetric rays", "rim lighting", "soft diffused", "hard directional"]
       },
       "prompt_guidelines": {
         "max_length": 300,
         "sentence_style": "concise",
         "camera_first": true,
-        "avoid_adjectives": ["stunning", "breathtaking", "amazing"],
-        "prefer_specifics": ["50mm lens", "f/2.8", "shallow depth of field", "medium close-up"]
+        "avoid_adjectives": ["stunning", "breathtaking", "amazing", "beautiful", "gorgeous"],
+        "avoid_phrases": ["the camera captures", "we see", "the viewer notices"],
+        "prefer_specifics": ["35mm lens", "f/2.8", "shallow depth of field", "medium close-up", "slow push-in", "golden hour backlight"],
+        "temporal_keywords": ["slowly", "gradually", "steadily"],
+        "composition_tips": "Runway responds well to specific lens/focal length mentions. Always lead with camera movement."
       }
     }
   },
@@ -30,20 +35,25 @@
     "max_duration": 60,
     "aspect_ratio_support": ["16:9", "9:16", "1:1"],
     "negative_placeholder": "Avoid: {negative}",
-    "notes": "Thrives on environment physics, color grading, and realistic scene details. Supports negative prompts.",
+    "notes": "Thrives on environment physics, color grading, and realistic scene details. Excels at complex scene understanding and temporal coherence. Supports negative prompts.",
     "enhancement_rules": {
       "preferred_order": ["style", "lighting", "action", "environment", "camera", "framing", "color_grading"],
       "keyword_injection": {
-        "environment_keywords": ["realistic physics", "natural lighting interaction", "spatial depth", "atmospheric perspective"],
-        "color_keywords": ["color palette", "tonal range", "color temperature", "saturation level"],
-        "physics_keywords": ["gravity", "momentum", "fluid dynamics", "light reflection", "shadow casting"]
+        "environment_keywords": ["realistic physics", "natural lighting interaction", "spatial depth", "atmospheric perspective", "environmental storytelling", "background activity"],
+        "color_keywords": ["color palette", "tonal range", "color temperature", "saturation level", "complementary colors", "color harmony"],
+        "physics_keywords": ["gravity", "momentum", "fluid dynamics", "light reflection", "shadow casting", "particle interaction", "surface tension"],
+        "lighting_keywords": ["volumetric fog", "god rays", "subsurface scattering", "specular highlights", "ambient occlusion", "bounce light"],
+        "temporal_keywords": ["as the scene progresses", "over time", "gradually shifting", "evolving naturally"]
       },
       "prompt_guidelines": {
         "max_length": 500,
         "sentence_style": "descriptive",
         "emphasize_physics": true,
         "emphasize_environment": true,
-        "prefer_specifics": ["warm golden hour light", "cool blue shadows", "volumetric fog", "natural color grading"]
+        "emphasize_temporal_coherence": true,
+        "avoid_adjectives": ["stunning", "breathtaking", "amazing"],
+        "prefer_specifics": ["warm golden hour light", "cool blue shadows", "volumetric fog", "natural color grading", "realistic water reflections", "accurate shadow behavior"],
+        "composition_tips": "Veo excels at physics simulation. Describe how light interacts with surfaces, how objects move with weight, and how the environment changes over time."
       }
     }
   },
@@ -54,20 +64,25 @@
     "max_duration": 30,
     "aspect_ratio_support": ["16:9", "9:16", "1:1"],
     "negative_placeholder": "Negative prompt: {negative}",
-    "notes": "Responds well to fluid action sequences, motion pacing terms, and atmospheric composition.",
+    "notes": "Responds well to fluid action sequences, motion pacing terms, and atmospheric composition. Strong at human motion and facial expressions.",
     "enhancement_rules": {
       "preferred_order": ["action", "camera", "framing", "environment", "style", "lighting", "duration", "color_grading"],
       "keyword_injection": {
-        "motion_keywords": ["fluid motion", "smooth tracking", "dynamic movement", "continuous flow", "natural pacing"],
-        "atmosphere_keywords": ["moody atmosphere", "ambient lighting", "cinematic mood", "dramatic tension"],
-        "pacing_keywords": ["slow motion", "real-time", "accelerated", "rhythmic movement"]
+        "motion_keywords": ["fluid motion", "smooth tracking", "dynamic movement", "continuous flow", "natural pacing", "weighty movement", "organic motion"],
+        "atmosphere_keywords": ["moody atmosphere", "ambient lighting", "cinematic mood", "dramatic tension", "immersive environment"],
+        "pacing_keywords": ["slow motion", "real-time", "accelerated", "rhythmic movement", "deliberate pace", "energetic"],
+        "human_keywords": ["natural facial expressions", "subtle body language", "realistic weight shift", "authentic movement"],
+        "camera_keywords": ["gimbal tracking", "steadicam", "handheld", "crane shot", "dolly zoom", "orbit"]
       },
       "prompt_guidelines": {
         "max_length": 400,
         "sentence_style": "action-first",
         "emphasize_motion": true,
         "emphasize_atmosphere": true,
-        "prefer_specifics": ["smooth gimbal tracking", "slow-motion capture", "dramatic backlighting", "moody atmosphere"]
+        "emphasize_human_motion": true,
+        "avoid_adjectives": ["stunning", "breathtaking", "amazing"],
+        "prefer_specifics": ["smooth gimbal tracking", "slow-motion capture", "dramatic backlighting", "moody atmosphere", "natural human movement"],
+        "composition_tips": "Kling excels at human subjects. Describe body language, facial expressions, and weight distribution. Action should lead the prompt."
       }
     }
   },
@@ -78,20 +93,25 @@
     "max_duration": 60,
     "aspect_ratio_support": ["16:9", "9:16", "1:1"],
     "negative_placeholder": "Exclude: {negative}",
-    "notes": "Prefers natural language descriptions. Strong at physics simulation and complex motion.",
+    "notes": "Prefers natural language descriptions. Strong at physics simulation, complex motion, and multi-shot sequences. Best with narrative flow.",
     "enhancement_rules": {
       "preferred_order": ["duration", "style", "action", "environment", "camera", "framing", "lighting", "color_grading"],
       "keyword_injection": {
-        "temporal_keywords": ["over the course of", "gradually", "in sequence", "as time progresses", "moment by moment"],
-        "physics_keywords": ["realistic physics", "natural motion", "accurate gravity", "proper momentum", "realistic interaction"],
-        "narrative_keywords": ["the scene unfolds", "progressively", "building toward", "culminating in"]
+        "temporal_keywords": ["over the course of", "gradually", "in sequence", "as time progresses", "moment by moment", "the scene unfolds", "progressively"],
+        "physics_keywords": ["realistic physics", "natural motion", "accurate gravity", "proper momentum", "realistic interaction", "object permanence"],
+        "narrative_keywords": ["the scene unfolds", "progressively", "building toward", "culminating in", "revealing", "transitioning to"],
+        "spatial_keywords": ["in the foreground", "in the background", "to the left", "panning right", "revealing behind"],
+        "causal_keywords": ["causing", "triggering", "resulting in", "leading to", "as a consequence"]
       },
       "prompt_guidelines": {
         "max_length": 600,
         "sentence_style": "narrative",
         "emphasize_temporal_flow": true,
         "emphasize_physics": true,
-        "prefer_specifics": ["the camera slowly reveals", "as the action progresses", "natural light shifts", "realistic object interaction"]
+        "emphasize_causal_relationships": true,
+        "avoid_adjectives": ["stunning", "breathtaking", "amazing"],
+        "prefer_specifics": ["the camera slowly reveals", "as the action progresses", "natural light shifts", "realistic object interaction", "cause and effect"],
+        "composition_tips": "Sora understands causality and temporal flow. Describe how events lead to other events. Use narrative language rather than technical jargon."
       }
     }
   },
@@ -102,11 +122,13 @@
     "max_duration": 12,
     "aspect_ratio_support": ["16:9", "9:16", "1:1"],
     "negative_placeholder": "",
-    "notes": "Short clips only. Strong at realistic motion. Keep prompts under 200 characters for best results.",
+    "notes": "Short clips only. Strong at realistic motion and lighting. Keep prompts under 200 characters for best results. No negative prompt support.",
     "enhancement_rules": {
       "preferred_order": ["style", "duration", "action", "environment", "camera", "framing", "lighting"],
       "keyword_injection": {
-        "motion_keywords": ["realistic motion", "natural movement", "smooth animation"],
+        "motion_keywords": ["realistic motion", "natural movement", "smooth animation", "fluid dynamics"],
+        "lighting_keywords": ["natural light", "studio lighting", "golden hour", "dramatic shadows"],
+        "style_keywords": ["photorealistic", "cinematic", "documentary-style", "film look"],
         "brevity_keywords": ["", "", ""]
       },
       "prompt_guidelines": {
@@ -114,7 +136,10 @@
         "sentence_style": "ultra-concise",
         "emphasize_brevity": true,
         "emphasize_realism": true,
-        "prefer_specifics": ["photorealistic", "natural motion", "clean composition"]
+        "avoid_adjectives": ["stunning", "breathtaking", "amazing", "beautiful"],
+        "avoid_phrases": ["the camera captures", "we see", "set in a"],
+        "prefer_specifics": ["photorealistic", "natural motion", "clean composition", "realistic lighting"],
+        "composition_tips": "Luma needs concise prompts. Every word counts. Lead with style, describe action simply, mention lighting. No flowery language."
       }
     }
   },
@@ -125,20 +150,25 @@
     "max_duration": 10,
     "aspect_ratio_support": ["16:9", "9:16", "1:1", "4:3"],
     "negative_placeholder": "--no {negative}",
-    "notes": "Uses --no flag for negatives. Short duration. Good for stylized and animated content.",
+    "notes": "Uses --no flag for negatives. Short duration. Excellent for stylized, animated, and artistic content. Strong at motion graphics.",
     "enhancement_rules": {
       "preferred_order": ["style", "action", "environment", "camera", "framing", "lighting"],
       "keyword_injection": {
-        "style_keywords": ["animated", "stylized", "illustrated", "cartoon", "anime-inspired", "motion graphics"],
-        "animation_keywords": ["smooth animation", "frame-by-frame", "cel-shaded", "vector art"],
-        "vibe_keywords": ["playful", "whimsical", "dreamy", "ethereal"]
+        "style_keywords": ["animated", "stylized", "illustrated", "cartoon", "anime-inspired", "motion graphics", "3D render", "watercolor", "oil painting style"],
+        "animation_keywords": ["smooth animation", "frame-by-frame", "cel-shaded", "vector art", "stop-motion feel", "2D animation"],
+        "vibe_keywords": ["playful", "whimsical", "dreamy", "ethereal", "surreal", "fantasy"],
+        "motion_keywords": ["fluid animation", "smooth transitions", "morphing", "particle effects"],
+        "color_keywords": ["vibrant colors", "pastel palette", "neon accents", "monochrome with accent color"]
       },
       "prompt_guidelines": {
         "max_length": 250,
         "sentence_style": "stylized",
         "emphasize_style": true,
         "emphasize_animation": true,
-        "prefer_specifics": ["smooth animated motion", "stylized rendering", "vibrant colors", "playful atmosphere"]
+        "emphasize_color": true,
+        "avoid_adjectives": ["realistic", "photorealistic", "documentary"],
+        "prefer_specifics": ["smooth animated motion", "stylized rendering", "vibrant colors", "playful atmosphere", "cel-shaded look"],
+        "composition_tips": "Pika excels at stylized content. Lead with art style. Use creative, artistic language. Negative prompts use --no flag."
       }
     }
   },
@@ -149,19 +179,24 @@
     "max_duration": 8,
     "aspect_ratio_support": ["16:9", "9:16"],
     "negative_placeholder": "",
-    "notes": "Very short clips. Strong at photorealistic content. No negative prompt support.",
+    "notes": "Very short clips. Strong at photorealistic content with natural textures. No negative prompt support.",
     "enhancement_rules": {
       "preferred_order": ["style", "duration", "action", "environment", "camera", "framing", "lighting", "color_grading"],
       "keyword_injection": {
-        "realism_keywords": ["photorealistic", "hyper-detailed", "true-to-life", "natural textures"],
-        "quality_keywords": ["high fidelity", "sharp focus", "clean composition", "professional grade"]
+        "realism_keywords": ["photorealistic", "hyper-detailed", "true-to-life", "natural textures", "organic surfaces"],
+        "quality_keywords": ["high fidelity", "sharp focus", "clean composition", "professional grade", "crisp detail"],
+        "texture_keywords": ["skin pores visible", "fabric weave", "surface grain", "material authenticity"],
+        "lighting_keywords": ["natural daylight", "soft window light", "golden hour warmth", "studio key light"]
       },
       "prompt_guidelines": {
         "max_length": 200,
         "sentence_style": "photorealistic",
         "emphasize_realism": true,
         "emphasize_quality": true,
-        "prefer_specifics": ["photorealistic rendering", "natural skin tones", "accurate lighting", "sharp detail"]
+        "emphasize_texture": true,
+        "avoid_adjectives": ["stunning", "breathtaking", "amazing", "cartoon", "animated"],
+        "prefer_specifics": ["photorealistic rendering", "natural skin tones", "accurate lighting", "sharp detail", "visible textures"],
+        "composition_tips": "Haiper excels at photorealism. Focus on texture, material, and natural lighting. Keep descriptions grounded and specific."
       }
     }
   },
@@ -172,19 +207,24 @@
     "max_duration": 4,
     "aspect_ratio_support": ["16:9", "9:16", "1:1"],
     "negative_placeholder": "negative prompt: {negative}",
-    "notes": "Very short clips. Comma-separated format works best. Strong negative prompt support.",
+    "notes": "Very short clips. Comma-separated format works best. Strong negative prompt support. Follows Stable Diffusion conventions.",
     "enhancement_rules": {
       "preferred_order": ["style", "action", "environment", "camera", "framing", "lighting", "color_grading"],
       "keyword_injection": {
-        "comma_keywords": ["", "", ""],
-        "negative_keywords": ["blurry", "low quality", "distorted", "unnatural", "artifacts", "noise", "deformed"]
+        "quality_keywords": ["masterpiece", "best quality", "high resolution", "sharp focus", "ultra-detailed", "8k"],
+        "style_keywords": ["cinematic still", "photograph", "digital art", "concept art", "film frame"],
+        "negative_keywords": ["blurry", "low quality", "distorted", "unnatural", "artifacts", "noise", "deformed", "ugly", "bad anatomy", "disfigured", "poorly drawn", "mutated", "extra limbs", "watermark", "text"],
+        "lighting_keywords": ["dramatic lighting", "studio lighting", "natural light", "volumetric lighting", "rim light"]
       },
       "prompt_guidelines": {
         "max_length": 150,
         "sentence_style": "comma-separated",
         "emphasize_comma_format": true,
         "emphasize_negative": true,
-        "prefer_specifics": ["masterpiece", "best quality", "high resolution", "sharp focus"]
+        "emphasize_quality_tags": true,
+        "avoid_phrases": ["a video of", "showing", "the camera"],
+        "prefer_specifics": ["masterpiece", "best quality", "high resolution", "sharp focus", "dramatic lighting"],
+        "composition_tips": "SVD follows SD conventions. Start with quality tags, then subject, then environment, then technical details. Use negative prompts aggressively."
       }
     }
   }

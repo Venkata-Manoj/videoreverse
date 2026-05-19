@@ -34,16 +34,17 @@ config/
 
 utils/
 ├── validation.js    ← Blueprint validator
-├── retry.js        ← Retry logic + exponential backoff
-├── fallback.js     ← Graceful degradation
-├── logger.js       ← Error logging
-├── cli.js          ← CLI argument parser
-├── video-type.js   ← Video type detection
-├── cache.js        ← Blueprint caching
-└── compare.js      ← Prompt comparison
+├── retry.js         ← Retry logic + exponential backoff
+├── fallback.js      ← Graceful degradation
+├── logger.js        ← Error logging
+├── cli.js           ← CLI argument parser
+├── video-type.js    ← Video type detection
+├── cache.js         ← Blueprint caching
+├── compare.js       ← Prompt comparison
+└── sampler.js       ← Smart frame sampling (ffmpeg clip + highlights)
 ```
 
-**Flow:** Video → peepshow (metadata + audio) → Gemini File API (multimodal analysis) → template compiler → dual output
+**Flow:** Video → [sampler] → peepshow (metadata + audio) → Gemini File API (multimodal analysis) → template compiler → dual output
 
 **Universal Schema:** `{ global_aesthetic, chronological_shots[] }` — enforced via `responseSchema`
 
@@ -67,8 +68,19 @@ Options:
   --dry-run            Output without saving
   --force, -F          Skip failed steps
   --max-retries, -r    API retry attempts (default: 3)
+  --max-duration       Pre-clip video to first N seconds
+  --sample-mode        Sampling: full, first-n, highlights (requires ffmpeg)
+  --video-type         Override auto-detected video type
+  --no-cache           Disable blueprint caching
+  --wsl                Force WSL path conversion
+  --win                Force Windows path mode
   --help, -h           Show help
 ```
+
+**Smart Sampling:** Reduces API cost by 50-90% for long videos.
+- `--sample-mode first-n --max-duration 30` → clip first 30s
+- `--sample-mode highlights --max-duration 30` → extract 30s of highest-motion segments
+- Cost estimate: ~$0.001/second for Gemini 2.5 Flash
 
 ## Error Handling
 
@@ -89,8 +101,28 @@ Options:
 
 ## Adding a New Model
 
-1. Edit `config/prompt_templates.json` with: `label`, `template` (placeholders: `{camera}`, `{framing}`, `{style}`, `{action}`, `{environment}`, `{lighting}`, `{color_grading}`, `{duration}`, `{negative}`, `{aspect_ratio}`), `supports_negative`, `max_duration`, `aspect_ratio_support`.
+1. Edit `config/prompt_templates.json` with: `label`, `template` (placeholders: `{camera}`, `{framing}`, `{style}`, `{action}`, `{environment}`, `{lighting}`, `{color_grading}`, `{duration}`, `{negative}`, `{aspect_ratio}`), `supports_negative`, `max_duration`, `aspect_ratio_support`, `enhancement_rules`.
 2. That's it. `compile.js` reads the config dynamically.
+
+**Enhancement Rules Structure:**
+```json
+{
+  "enhancement_rules": {
+    "preferred_order": ["camera", "framing", "style", "action", "environment", "lighting"],
+    "keyword_injection": {
+      "camera_keywords": ["35mm lens", "50mm lens", "f/2.8"],
+      "style_keywords": ["cinematic", "photorealistic"],
+      "action_keywords": ["smooth motion", "natural physics"]
+    },
+    "prompt_guidelines": {
+      "max_length": 300,
+      "sentence_style": "concise",
+      "avoid_adjectives": ["stunning", "breathtaking"],
+      "prefer_specifics": ["50mm lens", "f/2.8", "shallow depth of field"]
+    }
+  }
+}
+```
 
 ## Testing
 

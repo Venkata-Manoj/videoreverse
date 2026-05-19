@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { parseCLIArgs, printHelp, detectEnvironment } from '../utils/cli.js';
 import { setLogLevel, info, error, warn } from '../utils/logger.js';
 import { runPipeline } from './pipeline.js';

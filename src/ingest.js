@@ -95,7 +95,7 @@ async function ingestVideo(videoTarget) {
                 frames_deduped: raw.extraction?.framesDeduped || 0,
                 elapsed_ms: raw.extraction?.elapsedMs || 0,
             },
-            timeline_frames: timelineFrames,
+            timeline_frames: timelineFrames.frames,
             scene_changes: timelineFrames.scene_changes || [],
             output_dir: raw.outputDir || null,
         };
@@ -128,17 +128,17 @@ function extractFrameMetadata(frames, fps) {
     });
 
     const sceneChanges = detectSceneChanges(frameData);
-    frameData.scene_changes = sceneChanges;
 
-    return frameData;
+    return { frames: frameData, scene_changes: sceneChanges };
 }
 
-function detectSceneChanges(frames) {
+function detectSceneChanges(frames, options = {}) {
     if (!frames || frames.length < 2) return [];
 
     const sceneChanges = [];
-    const motionThreshold = 2.5;
-    const bytesThreshold = 0.4;
+    const motionThreshold = options.motionThreshold || 2.5;
+    const bytesThreshold = options.bytesThreshold || 0.4;
+    const consecutiveFrames = options.consecutiveFrames || false;
 
     for (let i = 1; i < frames.length; i++) {
         const prev = frames[i - 1];
@@ -156,6 +156,16 @@ function detectSceneChanges(frames) {
                 timestamp_seconds: curr.timestamp_seconds,
                 type: isBytesSpike ? 'scene_cut' : 'motion_change',
                 confidence: isBytesSpike && isSignificantMotionChange ? 'high' : 'medium',
+                from_motion: prev.motion_level,
+                to_motion: curr.motion_level,
+                bytes_change_ratio: bytesRatio.toFixed(2),
+            });
+        } else if (consecutiveFrames && motionChanged) {
+            sceneChanges.push({
+                index: i,
+                timestamp_seconds: curr.timestamp_seconds,
+                type: 'subtle_cut',
+                confidence: 'low',
                 from_motion: prev.motion_level,
                 to_motion: curr.motion_level,
                 bytes_change_ratio: bytesRatio.toFixed(2),

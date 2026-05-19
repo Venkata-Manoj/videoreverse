@@ -68,6 +68,7 @@ async function buildBlueprint(videoPath, step1Data, options = {}) {
 
         const frameContext = buildFrameContext(timelineFrames);
         const shotBoundaryHints = buildShotBoundaryHints(sceneChanges);
+        const motionTransitions = extractMotionTransitions(timelineFrames);
 
         const audioInfo = audio.mood?.mood 
             ? `Audio mood: ${audio.mood.mood}`
@@ -105,7 +106,12 @@ Also identify the overall art style, color grading, and lighting setup.
 ${shotBoundaryHints ? `CRITICAL - Shot Boundary Hints:
 The following timestamps were identified as likely shot boundaries from local frame analysis:
 ${shotBoundaryHints}
-Use these timestamps as hints to guide your shot segmentation. Validate against actual scene changes in the video.` : ''}`;
+Use these timestamps as hints to guide your shot segmentation. Validate against actual scene changes in the video.` : ''}
+
+${motionTransitions ? `Motion Transition Analysis:
+The following timestamps show significant motion level changes (likely cut points):
+${motionTransitions}
+Use these as additional hints for shot boundary detection.` : ''}`;
 
         let systemInstruction = BLUEPRINT_SYSTEM_PROMPT;
         
@@ -133,6 +139,9 @@ Each shot MUST include frame_references correlating to the timeline.`;
         console.log(`   → Frame context: ${timelineFrames.length} frames available`);
         if (sceneChanges.length > 0) {
             console.log(`   → Shot boundary hints: ${sceneChanges.length} potential cut points detected`);
+        }
+        if (motionTransitions.length > 0) {
+            console.log(`   → Motion transitions: ${motionTransitions.length} likely cut points from frame analysis`);
         }
 
         const response = await ai.models.generateContent({
@@ -234,6 +243,19 @@ function buildFrameContext(timelineFrames) {
         lines.push(`  Low motion frames: [${indices}]${more}`);
     }
 
+    const motionTransitions = detectMotionTransitions(timelineFrames);
+    if (motionTransitions.length > 0) {
+        lines.push(`  Motion transitions (likely cut points): ${motionTransitions.map(t => `${t.timestamp.toFixed(1)}s`).join(', ')}`);
+    }
+
+    const frameGroups = groupFramesByMotion(timelineFrames);
+    if (frameGroups.length > 1) {
+        lines.push(`  Frame groups (by motion similarity): ${frameGroups.length} groups`);
+        for (const group of frameGroups.slice(0, 5)) {
+            lines.push(`    Group ${group.id}: frames [${group.frameIndices.join(', ')}] @ ${group.startTimestamp.toFixed(1)}s-${group.endTimestamp.toFixed(1)}s (${group.motionLevel} motion)`);
+        }
+    }
+
     lines.push('');
     lines.push('  Frame details (format: [index] @timestamp_s - motion):');
     
@@ -250,6 +272,69 @@ function buildFrameContext(timelineFrames) {
     return lines.join('\n');
 }
 
+function detectMotionTransitions(timelineFrames) {
+    if (timelineFrames.length < 3) return [];
+
+    const transitions = [];
+    for (let i = 1; i < timelineFrames.length - 1; i++) {
+        const prev = timelineFrames[i - 1];
+        const curr = timelineFrames[i];
+        const next = timelineFrames[i + 1];
+
+        const prevMotion = prev.motion_level === 'high' ? 2 : prev.motion_level === 'low' ? 0 : 1;
+        const currMotion = curr.motion_level === 'high' ? 2 : curr.motion_level === 'low' ? 0 : 1;
+        const nextMotion = next.motion_level === 'high' ? 2 : next.motion_level === 'low' ? 0 : 1;
+
+        if (Math.abs(currMotion - prevMotion) >= 2 || Math.abs(nextMotion - currMotion) >= 2) {
+            transitions.push({
+                frame_index: i,
+                timestamp: curr.timestamp_seconds || 0,
+                type: 'motion_shift',
+            });
+        }
+    }
+
+    return transitions;
+}
+
+function groupFramesByMotion(timelineFrames) {
+    if (timelineFrames.length === 0) return [];
+
+    const groups = [];
+    let currentGroup = {
+        id: 0,
+        frameIndices: [timelineFrames[0].index],
+        motionLevel: timelineFrames[0].motion_level || 'medium',
+        startTimestamp: timelineFrames[0].timestamp_seconds || 0,
+        endTimestamp: timelineFrames[0].timestamp_seconds || 0,
+    };
+
+    for (let i = 1; i < timelineFrames.length; i++) {
+        const frame = timelineFrames[i];
+        const motion = frame.motion_level || 'medium';
+
+        if (motion === currentGroup.motionLevel) {
+            currentGroup.frameIndices.push(frame.index);
+            currentGroup.endTimestamp = frame.timestamp_seconds || 0;
+        } else {
+            groups.push({ ...currentGroup });
+            currentGroup = {
+                id: groups.length,
+                frameIndices: [frame.index],
+                motionLevel: motion,
+                startTimestamp: frame.timestamp_seconds || 0,
+                endTimestamp: frame.timestamp_seconds || 0,
+            };
+        }
+    }
+
+    if (currentGroup.frameIndices.length > 0) {
+        groups.push(currentGroup);
+    }
+
+    return groups;
+}
+
 function buildShotBoundaryHints(sceneChanges) {
     if (!sceneChanges || sceneChanges.length === 0) return null;
 
@@ -259,6 +344,27 @@ function buildShotBoundaryHints(sceneChanges) {
     }).join('\n');
 
     return `Detected ${sceneChanges.length} potential cut points:\n${hints}`;
+}
+
+function extractMotionTransitions(timelineFrames) {
+    if (!timelineFrames || timelineFrames.length < 3) return null;
+
+    const transitions = [];
+    for (let i = 1; i < timelineFrames.length - 1; i++) {
+        const prev = timelineFrames[i - 1];
+        const curr = timelineFrames[i];
+        const next = timelineFrames[i + 1];
+
+        const prevMotion = prev.motion_level === 'high' ? 2 : prev.motion_level === 'low' ? 0 : 1;
+        const currMotion = curr.motion_level === 'high' ? 2 : curr.motion_level === 'low' ? 0 : 1;
+        const nextMotion = next.motion_level === 'high' ? 2 : next.motion_level === 'low' ? 0 : 1;
+
+        if (Math.abs(currMotion - prevMotion) >= 2 || Math.abs(nextMotion - currMotion) >= 2) {
+            transitions.push(`${(curr.timestamp_seconds || 0).toFixed(1)}s (frame ${curr.index})`);
+        }
+    }
+
+    return transitions.length > 0 ? transitions.join(', ') : null;
 }
 
 export { buildBlueprint };

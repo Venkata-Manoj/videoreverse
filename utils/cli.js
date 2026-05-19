@@ -17,6 +17,8 @@ export const SUPPORTED_MODELS = [
 
 export const SUPPORTED_FORMATS = ['json', 'txt', 'both', 'none'];
 
+export const SUPPORTED_SAMPLE_MODES = ['full', 'first-n', 'highlights'];
+
 export const SUPPORTED_LOG_LEVELS = ['debug', 'info', 'warn', 'error', 'quiet'];
 
 export function parseCLIArgs(args) {
@@ -32,6 +34,7 @@ export function parseCLIArgs(args) {
         force: false,
         maxRetries: 3,
         maxDuration: null,
+        sampleMode: 'full',
         videoType: null,
         noCache: false,
         wslMode: null,
@@ -116,6 +119,15 @@ export function parseCLIArgs(args) {
                 }
                 break;
 
+            case '--sample-mode':
+                const mode = args[++i];
+                if (mode && SUPPORTED_SAMPLE_MODES.includes(mode)) {
+                    result.sampleMode = mode;
+                } else {
+                    throw new Error(`Invalid sample mode "${mode}". Use: ${SUPPORTED_SAMPLE_MODES.join(', ')}`);
+                }
+                break;
+
             case '--video-type':
                 const videoType = args[++i];
                 if (videoType) result.videoType = videoType;
@@ -173,6 +185,8 @@ Options:
   --force, -F          Skip failed steps and use cached results
   --max-retries, -r    Max retry attempts for API calls (default: 3)
   --max-duration       Pre-clip video to first N seconds
+  --sample-mode        Sampling strategy: full (default), first-n (clip first Ns), highlights (30s best moments)
+                        Requires ffmpeg. Reduces API cost by 50-90% for long videos (~$0.001/s for Gemini)
   --video-type         Override auto-detected video type
   --no-cache           Disable response caching
   --wsl                Force WSL path conversion
