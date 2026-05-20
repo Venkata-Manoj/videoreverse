@@ -1,3 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
 # Dependencies
 node_modules/
 .pnp
@@ -47,3 +57,4 @@ credentials/
 TODO.md
 MISSING_FILES.md
 prompt.txt
+MIGRATION_PROMPT.md

@@ -1,0 +1,16 @@
+[project]
+name = "vidrev"
+version = "1.1.0"
+description = "Universal Video-to-Prompt Pipeline — deconstruct any video into production-ready prompts for 8+ AI video models"
+requires-python = ">=3.12"
+dependencies = [
+    "google-genai>=1.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+vidrev = "src.main:main"
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
