@@ -2,36 +2,11 @@
 
 **Universal Video-to-Prompt Pipeline** — deconstruct any video into production-ready prompts for 8+ video AI models.
 
-[![Node](https://img.shields.io/badge/node-22%2B-brightgreen)](https://nodejs.org)
+[![Python](https://img.shields.io/badge/python-3.12%2B-blue)](https://python.org)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![CI](https://github.com/Venkata-Manoj/videoreverse/workflows/CI/badge.svg)](https://github.com/Venkata-Manoj/videoreverse/actions)
 [![GitHub stars](https://img.shields.io/github/stars/Venkata-Manoj/videoreverse)](https://github.com/Venkata-Manoj/videoreverse/stargazers)
 [![GitHub issues](https://img.shields.io/github/issues/Venkata-Manoj/videoreverse)](https://github.com/Venkata-Manoj/videoreverse/issues)
-
----
-
-## ⚠️ MAJOR CHANGES & MIGRATION GUIDE
-
-> **v1.0.0 — Repository Restructure (2024-05-18)**
-
-| Change | Migration Action |
-|--------|-----------------|
-| **Source files moved to `src/`** | Update scripts: `node pipeline.js` → `node src/main.js` |
-| **Config moved to `config/`** | Templates now at `config/prompt_templates.json` |
-| **New `package.json`** | Run `npm install` to enable npm scripts |
-| **CLI rewritten** | Use `node src/main.js --help` for updated options |
-
-```bash
-# Before (old)
-node pipeline.js ./video.mp4
-
-# After (new)
-node src/main.js ./video.mp4
-# or
-npm start -- ./video.mp4
-```
-
-**Rollback:** Refer to [CHANGELOG.md](./CHANGELOG.md) for previous versions.
 
 ---
 
@@ -58,8 +33,8 @@ VideoReverse analyzes videos using AI to generate production-ready prompts for v
 
 ### Prerequisites
 
-- **Node.js 22+** — [Install via nvm](https://github.com/nvm-sh/nvm)
-- **peepshow** — `npm i -g peepshow`
+- **Python 3.12+** — [Install via pyenv](https://github.com/pyenv/pyenv)
+- **ffmpeg** — for smart sampling (`apt install ffmpeg` or `brew install ffmpeg`)
 - **GEMINI_API_KEY** — Get from [Google AI Studio](https://aistudio.google.com/)
 
 ### Installation
@@ -69,8 +44,8 @@ VideoReverse analyzes videos using AI to generate production-ready prompts for v
 git clone https://github.com/Venkata-Manoj/videoreverse.git
 cd videoreverse
 
-# 2. Install dependencies
-npm install
+# 2. Install Python dependencies
+pip install -r requirements.txt
 
 # 3. Configure environment
 cp .env.example .env
@@ -81,13 +56,13 @@ cp .env.example .env
 
 ```bash
 # Full pipeline
-node src/main.js ./video.mp4
+python -m src.main ./video.mp4
 
 # Specific models
-node src/main.js ./video.mp4 --model runway_gen4_5,google_veo3_1
+python -m src.main ./video.mp4 --model runway_gen4_5,google_veo3_1
 
 # Dry run (no files saved)
-node src/main.js ./video.mp4 --dry-run --verbose
+python -m src.main ./video.mp4 --dry-run --verbose
 ```
 
 ---
@@ -140,13 +115,13 @@ node src/main.js ./video.mp4 --dry-run --verbose
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| `main.js` | `src/` | CLI entry point, argument parsing |
-| `pipeline.js` | `src/` | Orchestrator, chains all modules |
-| `ingest.js` | `src/` | Video metadata extraction, audio analysis |
-| `synthesize.js` | `src/` | Gemini File API integration |
-| `compile.js` | `src/` | Prompt compilation from templates |
-| `export.js` | `src/` | JSON to human-readable TXT formatter |
-| `path-resolver.js` | `src/` | Cross-platform path normalization |
+| `main.py` | `src/` | CLI entry point, argument parsing |
+| `pipeline.py` | `src/` | Orchestrator, chains all modules |
+| `ingest.py` | `src/` | Video metadata extraction, audio analysis |
+| `synthesize.py` | `src/` | Gemini File API integration |
+| `compile.py` | `src/` | Prompt compilation from templates |
+| `export.py` | `src/` | JSON to human-readable TXT formatter |
+| `path_resolver.py` | `src/` | Cross-platform path normalization |
 
 ### Universal Blueprint Schema
 
@@ -177,19 +152,19 @@ node src/main.js ./video.mp4 --dry-run --verbose
 
 ```bash
 # Install dependencies
-npm install
+pip install -r requirements.txt
 
 # Run all tests
-npm test
+python -m src.run_tests
 
-# Run unit tests only
-npm test -- tests/unit/
+# Run unit tests
+python -c "from tests.unit import test_validation, test_compile, test_retry; test_validation.run_tests(); test_compile.run_tests(); test_retry.run_tests()"
 
 # Run linter
-npm run lint
+python scripts/lint.py
 
 # Validate outputs
-npm run validate
+python scripts/validate.py
 
 # Run with Docker
 docker build -t vidrev .
@@ -214,14 +189,14 @@ docker run -v ./videos:/data/videos -e GEMINI_API_KEY=your_key vidrev ./data/vid
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
 | [`ci.yml`](.github/workflows/ci.yml) | Push/PR | Lint + Tests on Ubuntu, Windows, macOS |
-| [`release.yml`](.github/workflows/release.yml) | Tag | npm publish + Docker Hub |
+| [`release.yml`](.github/workflows/release.yml) | Tag | PyPI publish + Docker Hub |
 | [`security-scan.yml`](.github/workflows/security-scan.yml) | Weekly | Secret scanning + SBOM |
 
 ### Local CI Simulation
 
 ```bash
 # Run the full CI pipeline locally
-npm run lint && npm test
+python scripts/lint.py && python -m src.run_tests
 ```
 
 ---
@@ -236,7 +211,7 @@ Contributions are welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for 
 git checkout -b feature/my-feature
 
 # 3. Make changes and test
-npm test
+python -m src.run_tests
 
 # 4. Commit with clear message
 git commit -m "feat(scope): description"
@@ -275,8 +250,6 @@ See [SECURITY.md](./SECURITY.md) for vulnerability reporting.
 ## 📞 Support
 
 - **GitHub Issues:** [Open an issue](https://github.com/Venkata-Manoj/videoreverse/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/Venkata-Manoj/videoreverse/discussions)
-- **Documentation:** [docs/](docs/)
 
 ---
 
@@ -285,23 +258,23 @@ See [SECURITY.md](./SECURITY.md) for vulnerability reporting.
 ```
 videoreverse/
 ├── src/                  # Source code
-│   ├── main.js           # CLI entry point
-│   ├── pipeline.js       # Main orchestrator
-│   ├── ingest.js         # Video ingestion
-│   ├── synthesize.js    # Gemini synthesis
-│   ├── compile.js        # Prompt compiler
-│   ├── export.js         # Output formatter
-│   ├── path-resolver.js  # Path normalization
-│   └── run_tests.js      # Test runner
+│   ├── main.py           # CLI entry point
+│   ├── pipeline.py       # Main orchestrator
+│   ├── ingest.py         # Video ingestion
+│   ├── synthesize.py     # Gemini synthesis
+│   ├── compile.py        # Prompt compiler
+│   ├── export.py         # Output formatter
+│   ├── path_resolver.py  # Path normalization
+│   └── run_tests.py      # Test runner
 ├── config/               # Configuration
 │   └── prompt_templates.json
 ├── utils/                # Shared utilities
-├── tests/                 # Test suite
-├── scripts/               # Dev automation
-├── docs/                  # Documentation
-├── .github/               # CI/CD workflows
-├── output_blueprints/     # Generated outputs (gitignored)
-└── [config files]         # package.json, Dockerfile, etc.
+├── tests/                # Test suite
+├── scripts/              # Dev automation
+├── docs/                 # Documentation
+├── .github/              # CI/CD workflows
+├── output_blueprints/    # Generated outputs (gitignored)
+└── [config files]        # requirements.txt, Dockerfile, etc.
 ```
 
 ---
@@ -310,7 +283,8 @@ videoreverse/
 
 | Component | Supported Versions |
 |-----------|-------------------|
-| Node.js | 22+ |
+| Python | 3.12+ |
+| Node.js | 18+ (for peepshow CLI only) |
 | peepshow | Latest |
 | Gemini API | v1 |
 | OS | Ubuntu, Windows (WSL), macOS |

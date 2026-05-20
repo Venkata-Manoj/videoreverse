@@ -1,24 +1,28 @@
 # syntax=docker/dockerfile:1
-FROM node:22-alpine
+FROM python:3.12-slim
 
 LABEL maintainer="VideoReverse"
 LABEL description="Universal Video-to-Prompt Pipeline"
 
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
-    bash \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/* \
     && npm install -g peepshow
 
 WORKDIR /app
 
-COPY package.json ./
-RUN npm ci --only=production
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ ./src/
 COPY config/ ./config/
 COPY utils/ ./utils/
+COPY tests/ ./tests/
+COPY scripts/ ./scripts/
 
-ENV NODE_ENV=production
+ENV PYTHONDONTWRITEBYTECODE=1
 
-ENTRYPOINT ["node", "src/main.js"]
+ENTRYPOINT ["python", "-m", "src.main"]
 CMD ["--help"]

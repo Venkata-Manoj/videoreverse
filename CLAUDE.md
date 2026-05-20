@@ -9,8 +9,8 @@ VideoReverse is a Universal Video-to-Prompt Pipeline that deconstructs any video
 
 ### Installation & Setup
 ```bash
-# Install dependencies
-npm install
+# Install Python dependencies
+pip install -r requirements.txt
 
 # Install peepshow globally (required for video processing)
 npm i -g peepshow
@@ -23,34 +23,28 @@ cp .env.example .env
 ### Running the Pipeline
 ```bash
 # Basic usage
-node src/main.js ./video.mp4
+python -m src.main ./video.mp4
 
 # With specific models
-node src/main.js ./video.mp4 --model runway_gen4_5,google_veo3_1
+python -m src.main ./video.mp4 --model runway_gen4_5,google_veo3_1
 
 # Dry run (no files saved)
-node src/main.js ./video.mp4 --dry-run --verbose
-
-# Using npm scripts
-npm start -- ./video.mp4
+python -m src.main ./video.mp4 --dry-run --verbose
 ```
 
 ### Testing & Validation
 ```bash
 # Run all tests
-npm test
-
-# Run unit tests only
-npm test -- tests/unit/
+python -m src.run_tests
 
 # Run linter
-npm run lint
+python scripts/lint.py
 
 # Validate outputs
-npm run validate
+python scripts/validate.py
 
 # Run full CI pipeline locally
-npm run lint && npm test
+python scripts/lint.py && python -m src.run_tests
 ```
 
 ### Docker Usage
@@ -65,15 +59,15 @@ docker run -v ./videos:/data/videos -e GEMINI_API_KEY=your_key vidrev ./data/vid
 ## 🏗️ Architecture Overview
 
 ### Core Pipeline Flow
-1. **Ingestion** (`src/ingest.js`) - Uses peepshow to extract video/audio metadata, transcripts, and frame analysis
-2. **Blueprint Synthesis** (`src/synthesize.js`) - Uses Gemini File API to create universal video blueprint
-3. **Prompt Compilation** (`src/compile.js`) - Applies templates to generate model-specific prompts
-4. **Export** (`src/export.js`) - Formats output as JSON and/or human-readable text
-5. **Path Resolution** (`src/path-resolver.js`) - Handles cross-platform path normalization (Windows/WSL/Linux)
+1. **Ingestion** (`src/ingest.py`) - Uses peepshow to extract video/audio metadata, transcripts, and frame analysis
+2. **Blueprint Synthesis** (`src/synthesize.py`) - Uses Gemini File API to create universal video blueprint
+3. **Prompt Compilation** (`src/compile.py`) - Applies templates to generate model-specific prompts
+4. **Export** (`src/export.py`) - Formats output as JSON and/or human-readable text
+5. **Path Resolution** (`src/path_resolver.py`) - Handles cross-platform path normalization (Windows/WSL/Linux)
 
 ### Key Components
-- **CLI Entry Point** (`src/main.js`) - Argument parsing and pipeline orchestration
-- **Pipeline Orchestrator** (`src/pipeline.js`) - Manages retry logic, fallback mechanisms, and step timing
+- **CLI Entry Point** (`src/main.py`) - Argument parsing and pipeline orchestration
+- **Pipeline Orchestrator** (`src/pipeline.py`) - Manages retry logic, fallback mechanisms, and step timing
 - **Universal Blueprint Schema** - Structured representation with global aesthetics and chronological shots
 - **Fallback System** - Graceful degradation when Gemini API fails
 - **Video Type Detection** - Automatic detection of video content type (animation, aerial, vlog, etc.)
@@ -87,22 +81,22 @@ docker run -v ./videos:/data/videos -e GEMINI_API_KEY=your_key vidrev ./data/vid
 ```
 videoreverse/
 ├── src/                  # Source code
-│   ├── main.js           # CLI entry point
-│   ├── pipeline.js       # Main orchestrator with retry/fallback logic
-│   ├── ingest.js         # Video ingestion using peepshow
-│   ├── synthesize.js     # Gemini-powered blueprint synthesis
-│   ├── compile.js        # Template-based prompt compilation
-│   ├── export.js         # JSON/TXT output formatting
-│   └── path-resolver.js  # Cross-platform path handling
+│   ├── main.py           # CLI entry point
+│   ├── pipeline.py       # Main orchestrator with retry/fallback logic
+│   ├── ingest.py         # Video ingestion using peepshow
+│   ├── synthesize.py     # Gemini-powered blueprint synthesis
+│   ├── compile.py        # Template-based prompt compilation
+│   ├── export.py         # JSON/TXT output formatting
+│   └── path_resolver.py  # Cross-platform path handling
 ├── config/               # Configuration files
 │   └── prompt_templates.json
 ├── tests/                # Test suite
 ├── output_blueprints/    # Generated outputs (gitignored)
-└── [config files]        # package.json, .env.example, etc.
+└── [config files]        # requirements.txt, .env.example, etc.
 ```
 
 ## ⚠️ Important Notes
-- Requires Node.js 22+ (use nvm for version management)
+- Requires Python 3.12+ (use pyenv for version management)
 - peepshow must be installed globally (`npm i -g peepshow`)
 - GEMINI_API_KEY is required in .env file
 - Outputs are saved to `output_blueprints/` directory by default
@@ -115,10 +109,10 @@ videoreverse/
 - Test videos are referenced in README (test1.mp4 for CGI/Animation)
 - Unit tests should mock external dependencies (peepshow, Gemini API)
 - Integration tests can use actual test videos
-- Linting follows standard JavaScript conventions
+- Linting follows Python conventions
 - Validation ensures output matches expected schema
 
 ## 🔄 CI/CD Workflows
 - CI runs on push/PR across Ubuntu, Windows, and macOS
-- Release workflow triggered by tags for npm publish + Docker Hub
+- Release workflow triggered by tags for PyPI publish + Docker Hub
 - Weekly security scans for secret scanning and SBOM generation
