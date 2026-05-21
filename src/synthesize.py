@@ -97,7 +97,7 @@ def _detect_motion_transitions(timeline_frames: list[dict[str, Any]]) -> list[di
         curr = timeline_frames[i]
         next_frame = timeline_frames[i + 1]
 
-        def motion_value(f):
+        def motion_value(f: dict[str, Any]) -> int:
             ml = f.get("motion_level", "medium")
             return 2 if ml == "high" else (0 if ml == "low" else 1)
 
@@ -175,7 +175,7 @@ def _extract_motion_transitions(timeline_frames: list[dict[str, Any]] | None) ->
         curr = timeline_frames[i]
         next_frame = timeline_frames[i + 1]
 
-        def motion_value(f):
+        def motion_value(f: dict[str, Any]) -> int:
             ml = f.get("motion_level", "medium")
             return 2 if ml == "high" else (0 if ml == "low" else 1)
 
@@ -215,6 +215,7 @@ async def build_blueprint(
 
         print("   → Waiting for file processing...", flush=True)
         processing = False
+        status = uploaded_file
         for i in range(60):
             import asyncio
 
@@ -331,11 +332,24 @@ Use these as additional hints for shot boundary detection."""
 
         from google.genai import types
 
+        active_file = status
+        file_uri = active_file.uri
+        mime_type = active_file.mime_type or "video/mp4"
+        if not file_uri:
+            raise RuntimeError("Gemini file is ACTIVE but has no uri — cannot run multimodal analysis")
+
         response = await _client.aio.models.generate_content(
             model=gemini_model,
             contents=[
-                user_prompt,
-                types.FileData(file_uri=uploaded_file.uri, mime_type="video/mp4"),
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part(text=user_prompt),
+                        types.Part(
+                            file_data=types.FileData(file_uri=file_uri, mime_type=mime_type),
+                        ),
+                    ],
+                )
             ],
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

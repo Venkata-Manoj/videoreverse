@@ -5,6 +5,7 @@ import sys
 import time
 from datetime import UTC, datetime, timezone
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -43,11 +44,11 @@ RESULTS_DIR = os.path.join(PROJECT_ROOT, "test_results")
 SUMMARY_FILE = os.path.join(RESULTS_DIR, "test_summary.json")
 
 
-def _ensure_results_dir():
+def _ensure_results_dir() -> None:
     os.makedirs(RESULTS_DIR, exist_ok=True)
 
 
-def _validate_output(filename):
+def _validate_output(filename: str) -> dict[str, Any]:
     try:
         with open(filename, encoding="utf-8") as f:
             data = json.load(f)
@@ -74,7 +75,7 @@ def _validate_output(filename):
         }
 
 
-async def _run_pipeline(video_path, options=None):
+async def _run_pipeline(video_path: str, options: dict[str, Any] | None = None) -> dict[str, Any]:
     if options is None:
         options = {}
     opts = {
@@ -102,7 +103,7 @@ async def _run_pipeline(video_path, options=None):
         return {"success": False, "error": str(error)}
 
 
-async def run_tests():
+async def run_tests() -> dict[str, Any]:
     print("═" * 60, flush=True)
     print("  VideoReverse — Test Suite", flush=True)
     print("═" * 60 + "\n", flush=True)
@@ -215,7 +216,7 @@ async def run_tests():
     return results
 
 
-def main():
+def main() -> None:
     results = asyncio.run(run_tests())
     sys.exit(1 if results["failed"] > 0 else 0)
 
