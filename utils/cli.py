@@ -41,7 +41,7 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
         "verbose": False,
         "quiet": False,
         "force": False,
-        "max_retries": 3,
+        "max_retries": 5,
         "max_duration": None,
         "sample_mode": "full",
         "video_type": None,

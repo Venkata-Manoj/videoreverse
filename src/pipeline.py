@@ -5,7 +5,10 @@ import os
 import re
 import time
 from datetime import UTC, datetime, timezone
+from collections.abc import Callable
 from typing import Any
+
+ProgressCallback = Callable[[str, dict[str, Any]], None]
 
 from src.compile import compile_prompts
 from src.export import format_text
@@ -15,7 +18,7 @@ from src.synthesize import build_blueprint
 from utils.cli import detect_environment
 from utils.fallback import FallbackMode, build_fallback_blueprint, compile_fallback_prompts, log_fallback_usage
 from utils.logger import debug, error, info, log_pipeline_step, set_log_level, warn
-from utils.retry import RETRY_CONFIG, RetriableError, with_retry
+from utils.retry import RETRY_CONFIG, _is_retriable_error, extract_status_code, with_retry
 from utils.validation import sanitize_blueprint, validate_blueprint
 from utils.video_type import detect_video_type, get_video_type_label
 
@@ -48,12 +51,56 @@ def _normalize_path(target: str | Any, wsl_mode: str | None = None) -> str | Any
     return os.path.abspath(target)
 
 
-async def run_pipeline(options: dict[str, Any]) -> dict[str, Any]:
+def _emit_progress(
+    callback: ProgressCallback | None,
+    event: str,
+    *,
+    step: str | None = None,
+    status: str | None = None,
+    message: str | None = None,
+    **extra: Any,
+) -> None:
+    if not callback:
+        return
+    payload: dict[str, Any] = {}
+    if step is not None:
+        payload["step"] = step
+    if status is not None:
+        payload["status"] = status
+    if message is not None:
+        payload["message"] = message
+    payload.update(extra)
+    callback(event, payload)
+
+
+async def run_pipeline(
+    options: dict[str, Any],
+    on_progress: ProgressCallback | None = None,
+) -> dict[str, Any]:
     start_time = time.time() * 1000
     fallback = FallbackMode()
 
+    _emit_progress(
+        on_progress,
+        "pipeline_start",
+        message="Starting VideoReverse pipeline",
+        video_path=options.get("video_path"),
+        environment=detect_environment(),
+    )
+    _emit_progress(on_progress, "step", step="resolve", status="running", message="Resolving video path")
+
     normalized = _normalize_path(options.get("video_path"), options.get("wsl_mode"))
     video_type = options.get("video_type") or detect_video_type(None, None)
+
+    _emit_progress(
+        on_progress,
+        "step",
+        step="resolve",
+        status="done",
+        message="Video path ready",
+        resolved_path=normalized if isinstance(normalized, str) else str(normalized),
+        video_type=video_type,
+    )
 
     print("═" * 60, flush=True)
     print("  VideoReverse — Universal Video-to-Prompt", flush=True)
@@ -78,6 +125,13 @@ async def run_pipeline(options: dict[str, Any]) -> dict[str, Any]:
 
     try:
         ingest_start = time.time() * 1000
+        _emit_progress(
+            on_progress,
+            "step",
+            step="ingest",
+            status="running",
+            message="Extracting metadata, frames, and audio with ffmpeg",
+        )
         print("\n── Ingestion & Sampling ──\n", flush=True)
 
         try:
@@ -99,15 +153,43 @@ async def run_pipeline(options: dict[str, Any]) -> dict[str, Any]:
             raise
 
         log_pipeline_step("ingest", results["timing"]["ingest_ms"], True)
+        _emit_progress(
+            on_progress,
+            "step",
+            step="ingest",
+            status="done",
+            message="Ingestion complete",
+            duration_ms=results["timing"]["ingest_ms"],
+        )
 
         blueprint = None
         synth_start = time.time() * 1000
+        _emit_progress(
+            on_progress,
+            "step",
+            step="synthesize",
+            status="running",
+            message="Analyzing video with Gemini AI",
+        )
         print("\n── Blueprint Synthesis ──\n", flush=True)
+
+        def _on_synth_retry(attempt: int, delay_ms: int, err_msg: str) -> None:
+            _emit_progress(
+                on_progress,
+                "retry",
+                step="synthesize",
+                attempt=attempt,
+                max_retries=options.get("max_retries", RETRY_CONFIG["maxRetries"]),
+                delay_ms=delay_ms,
+                message=f"Gemini busy — retrying in {delay_ms / 1000:.1f}s ({attempt}/{options.get('max_retries', RETRY_CONFIG['maxRetries'])})",
+                detail=err_msg,
+            )
 
         try:
             blueprint = await with_retry(
                 lambda: build_blueprint(normalized, results["steps"]["ingest"], options),
                 {"maxRetries": options.get("max_retries", RETRY_CONFIG["maxRetries"])},
+                on_retry=_on_synth_retry,
             )
 
             try:
@@ -123,14 +205,20 @@ async def run_pipeline(options: dict[str, Any]) -> dict[str, Any]:
         except Exception as err:
             results["timing"]["synthesize_ms"] = time.time() * 1000 - synth_start
 
-            is_retriable = isinstance(err, RetriableError) and getattr(err, "is_retriable", False)
-            if not is_retriable:
-                err_msg = str(err).lower()
-                is_retriable = "rate limit" in err_msg or "quota" in err_msg
+            status = getattr(err, "status_code", None) or extract_status_code(str(err))
+            use_fallback = options.get("force") or options.get("use_fallback", True)
+            is_transient = _is_retriable_error(str(err), status)
 
-            if is_retriable or options.get("force"):
+            if use_fallback and is_transient:
                 fallback.activate(f"Gemini synthesis failed: {err}")
                 log_fallback_usage(fallback, "synthesis", err)
+                _emit_progress(
+                    on_progress,
+                    "fallback",
+                    step="synthesize",
+                    message="Gemini unavailable — using metadata-based fallback blueprint",
+                    detail=str(err),
+                )
 
                 blueprint = build_fallback_blueprint(results["steps"]["ingest"])
                 results["steps"]["synthesize"] = blueprint
@@ -139,9 +227,25 @@ async def run_pipeline(options: dict[str, Any]) -> dict[str, Any]:
                 raise
 
         log_pipeline_step("synthesis", results["timing"]["synthesize_ms"], not fallback.is_active())
+        _emit_progress(
+            on_progress,
+            "step",
+            step="synthesize",
+            status="done",
+            message="Blueprint ready" + (" (fallback mode)" if fallback.is_active() else ""),
+            duration_ms=results["timing"]["synthesize_ms"],
+            fallback=fallback.is_active(),
+        )
 
         prompts = None
         compile_start = time.time() * 1000
+        _emit_progress(
+            on_progress,
+            "step",
+            step="compile",
+            status="running",
+            message="Generating model-specific prompts",
+        )
         print("\n── Prompt Compilation ──\n", flush=True)
 
         try:
@@ -162,6 +266,15 @@ async def run_pipeline(options: dict[str, Any]) -> dict[str, Any]:
                 raise
 
         log_pipeline_step("compile", results["timing"]["compile_ms"], True)
+        _emit_progress(
+            on_progress,
+            "step",
+            step="compile",
+            status="done",
+            message=f"Compiled prompts for {len(prompts or {})} model(s)",
+            duration_ms=results["timing"]["compile_ms"],
+            model_count=len(prompts or {}),
+        )
 
         results["output"] = {
             "video_metadata": results["steps"]["ingest"].get("video_metadata", {}),
@@ -177,12 +290,24 @@ async def run_pipeline(options: dict[str, Any]) -> dict[str, Any]:
         results["timing"]["total_ms"] = time.time() * 1000 - start_time
 
         if options.get("dry_run"):
+            _emit_progress(on_progress, "step", step="export", status="done", message="Dry run — results not saved to disk")
+            _emit_progress(
+                on_progress,
+                "pipeline_complete",
+                message="Pipeline finished (dry run)",
+                timing=results["timing"],
+                shot_count=len(blueprint.get("chronological_shots", [])),
+                model_count=len(prompts or {}),
+                fallback=fallback.is_active(),
+                output=results["output"],
+            )
             print("\n" + "═" * 60, flush=True)
             print("  DRY RUN — No files saved", flush=True)
             print("═" * 60, flush=True)
             print(json.dumps(results["output"], indent=2), flush=True)
             return results["output"]
 
+        _emit_progress(on_progress, "step", step="export", status="running", message="Saving JSON and text outputs")
         output_dir = os.path.abspath(options.get("output_dir", "output_blueprints"))
         if not os.path.exists(output_dir):
             os.makedirs(output_dir, exist_ok=True)
@@ -216,6 +341,31 @@ async def run_pipeline(options: dict[str, Any]) -> dict[str, Any]:
 
         print("═" * 60 + "\n", flush=True)
 
+        saved_files = {"json": json_file}
+        if options.get("format") in ("txt", "both"):
+            saved_files["txt"] = text_file
+
+        _emit_progress(
+            on_progress,
+            "step",
+            step="export",
+            status="done",
+            message="Results saved",
+            duration_ms=0,
+            files=saved_files,
+        )
+        _emit_progress(
+            on_progress,
+            "pipeline_complete",
+            message="Pipeline finished successfully",
+            timing=results["timing"],
+            shot_count=len(blueprint.get("chronological_shots", [])),
+            model_count=len(prompts or {}),
+            fallback=fallback.is_active(),
+            output=results["output"],
+            files=saved_files,
+        )
+
         return results["output"]
 
     except Exception as err:
@@ -233,5 +383,13 @@ async def run_pipeline(options: dict[str, Any]) -> dict[str, Any]:
             print("\n   Fix: Add GEMINI_API_KEY to .env file", flush=True)
         elif "not found" in err_str:
             print("\n   Fix: Check the video path is correct and accessible", flush=True)
+
+        _emit_progress(
+            on_progress,
+            "pipeline_error",
+            message=str(err),
+            timing=results.get("timing"),
+            errors=results.get("errors"),
+        )
 
         raise

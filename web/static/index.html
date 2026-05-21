@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VideoReverse — Web Tester</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">▶</span>
+      <div>
+        <h1>VideoReverse</h1>
+        <p class="tagline">Turn any video into AI-ready prompts — no command line needed</p>
+      </div>
+    </div>
+    <div id="env-badge" class="badge">Checking setup…</div>
+  </header>
+
+  <main class="layout">
+    <section class="card upload-card">
+      <h2>1. Choose your video</h2>
+      <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Upload video">
+        <input type="file" id="video-input" accept="video/*,.mp4,.mov,.avi,.mkv,.webm,.m4v" hidden />
+        <p class="drop-title">Drop a video here or click to browse</p>
+        <p class="drop-hint">MP4, MOV, WebM and other formats supported by ffmpeg</p>
+        <p id="file-name" class="file-name"></p>
+      </div>
+
+      <details class="options">
+        <summary>Options (optional)</summary>
+        <div class="options-grid">
+          <label>
+            AI models
+            <select id="models-select" multiple size="6"></select>
+            <span class="hint">Hold Ctrl/Cmd to pick several. Leave empty for all models.</span>
+          </label>
+          <label>
+            Sample mode
+            <select id="sample-mode">
+              <option value="full">Full video</option>
+              <option value="first-n">First N seconds</option>
+              <option value="highlights">Highlights (best motion)</option>
+            </select>
+          </label>
+          <label>
+            Max duration (seconds)
+            <input type="number" id="max-duration" min="1" step="1" placeholder="e.g. 30" />
+          </label>
+          <label>
+            Gemini model
+            <select id="gemini-model"></select>
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="dry-run" />
+            Preview only — do not save files
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="use-fallback" checked />
+            If Gemini is busy, continue with a metadata-based blueprint
+          </label>
+        </div>
+      </details>
+
+      <button id="run-btn" class="btn primary" disabled>Start analysis</button>
+    </section>
+
+    <section class="card process-card">
+      <h2>2. What happens to your video</h2>
+      <p class="process-intro">
+        VideoReverse runs four steps automatically. Progress updates appear here in real time.
+      </p>
+      <ol id="steps" class="steps">
+        <li data-step="resolve"><span class="step-icon">○</span><div><strong>Prepare</strong><span>Check path and video type</span></div></li>
+        <li data-step="ingest"><span class="step-icon">○</span><div><strong>Ingestion</strong><span>ffmpeg extracts metadata, frames, audio</span></div></li>
+        <li data-step="synthesize"><span class="step-icon">○</span><div><strong>Blueprint</strong><span>Gemini builds a universal scene breakdown</span></div></li>
+        <li data-step="compile"><span class="step-icon">○</span><div><strong>Compile</strong><span>Templates turn blueprint into model prompts</span></div></li>
+        <li data-step="export"><span class="step-icon">○</span><div><strong>Export</strong><span>Save JSON and readable text files</span></div></li>
+      </ol>
+      <div id="status-log" class="status-log" aria-live="polite"></div>
+    </section>
+
+    <section class="card results-card hidden" id="results-section">
+      <h2>3. Results</h2>
+      <div id="summary" class="summary"></div>
+      <div class="tabs">
+        <button type="button" class="tab active" data-tab="blueprint">Blueprint</button>
+        <button type="button" class="tab" data-tab="prompts">Prompts</button>
+        <button type="button" class="tab" data-tab="raw">Raw JSON</button>
+      </div>
+      <div id="tab-blueprint" class="tab-panel"></div>
+      <div id="tab-prompts" class="tab-panel hidden"></div>
+      <pre id="tab-raw" class="tab-panel hidden raw-json"></pre>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Local tool for testing VideoReverse. API key stays on your machine.</p>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

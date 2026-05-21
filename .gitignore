@@ -12,6 +12,7 @@ build/
 # Generated outputs
 output_blueprints/
 .cache/
+.cache/web_uploads/
 test_results/
 
 # Environment

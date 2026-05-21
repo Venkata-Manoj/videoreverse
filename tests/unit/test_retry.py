@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from utils.retry import with_retry, RETRY_CONFIG, calculate_delay, _is_retriable_error
+from utils.retry import with_retry, RETRY_CONFIG, calculate_delay, _is_retriable_error, extract_status_code
 from tests.unit.test_framework import describe, it, expect
 
 
@@ -40,6 +40,13 @@ def run_tests():
         expect(_is_retriable_error('timeout')).to_be(True)
 
     describe('isRetriableError', lambda: it('should detect network errors', _test_network_errors))
+
+    def _test_gemini_503_message():
+        msg = "503 UNAVAILABLE. {'error': {'code': 503, 'message': 'high demand'}}"
+        expect(extract_status_code(msg)).to_be(503)
+        expect(_is_retriable_error(msg)).to_be(True)
+
+    describe('isRetriableError', lambda: it('should detect Gemini 503 unavailable strings', _test_gemini_503_message))
 
     def _test_success_first_try():
         async def _run():

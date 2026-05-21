@@ -16,6 +16,8 @@ Video-to-prompt pipeline that deconstructs any video into a universal blueprint,
 - `python -m src.main --batch <dir_or_file>` — batch process multiple videos
 - `python -m src.ingest <path_or_url>` — standalone ingestion (metadata + frames)
 - `python -m benchmark` — run prompt quality benchmarks
+- `python -m web` — local Web UI for non-CLI testing (requires `pip install flask` or `pip install -e ".[web]"`)
+- `vidrev-web` — same as `python -m web` (after editable install)
 - Paths auto-convert: Windows `E:\vidrev\test.mp4` → WSL `/mnt/e/vidrev/test.mp4`
 
 ## Architecture
@@ -49,6 +51,11 @@ utils/
 benchmark/
 ├── benchmark.py      ← Prompt quality benchmark runner
 └── metrics.py        ← Quality metrics (shot count, style, action, etc.)
+
+web/
+├── app.py            ← Flask server (upload + SSE progress)
+├── jobs.py           ← Background job runner
+└── static/           ← HTML/CSS/JS UI (step timeline + results tabs)
 ```
 
 **Flow:** Video → [sampler] → ffmpeg (metadata + audio) → Gemini File API (multimodal analysis) → template compiler → dual output

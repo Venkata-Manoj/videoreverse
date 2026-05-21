@@ -10,6 +10,7 @@ from google import genai
 
 from src.blueprint_prompt import BLUEPRINT_SCHEMA, BLUEPRINT_SYSTEM_PROMPT
 from src.path_resolver import get_root
+from utils.retry import api_error_from_exception
 
 
 def _load_env_key() -> str | None:
@@ -338,25 +339,28 @@ Use these as additional hints for shot boundary detection."""
         if not file_uri:
             raise RuntimeError("Gemini file is ACTIVE but has no uri — cannot run multimodal analysis")
 
-        response = await _client.aio.models.generate_content(
-            model=gemini_model,
-            contents=[
-                types.Content(
-                    role="user",
-                    parts=[
-                        types.Part(text=user_prompt),
-                        types.Part(
-                            file_data=types.FileData(file_uri=file_uri, mime_type=mime_type),
-                        ),
-                    ],
-                )
-            ],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=BLUEPRINT_SCHEMA,
-                system_instruction=system_instruction,
-            ),
-        )
+        try:
+            response = await _client.aio.models.generate_content(
+                model=gemini_model,
+                contents=[
+                    types.Content(
+                        role="user",
+                        parts=[
+                            types.Part(text=user_prompt),
+                            types.Part(
+                                file_data=types.FileData(file_uri=file_uri, mime_type=mime_type),
+                            ),
+                        ],
+                    )
+                ],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=BLUEPRINT_SCHEMA,
+                    system_instruction=system_instruction,
+                ),
+            )
+        except Exception as exc:
+            raise api_error_from_exception(exc) from exc
 
         blueprint = json.loads(response.text)
 

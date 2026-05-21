@@ -2,18 +2,21 @@ from __future__ import annotations
 
 import asyncio
 import random
+import re
 from collections.abc import Callable
 from typing import Any, TypeVar
 
 T = TypeVar("T")
 
 RETRY_CONFIG: dict[str, Any] = {
-    "maxRetries": 3,
-    "baseDelay": 1000,
-    "maxDelay": 30000,
+    "maxRetries": 5,
+    "baseDelay": 2000,
+    "maxDelay": 60000,
     "exponentialBase": 2,
     "jitterFactor": 0.1,
 }
+
+_HTTP_STATUS_RE = re.compile(r"\b(429|500|502|503|504)\b")
 
 
 class RetriableError(Exception):
@@ -24,7 +27,19 @@ class RetriableError(Exception):
         self.is_retriable = _is_retriable_error(message, status_code)
 
 
+def extract_status_code(message: str | None) -> int | None:
+    if not message:
+        return None
+    match = _HTTP_STATUS_RE.search(message)
+    if match:
+        return int(match.group(1))
+    return None
+
+
 def _is_retriable_error(message: str | None, status_code: int | None = None) -> bool:
+    if status_code is None and message:
+        status_code = extract_status_code(message)
+
     if status_code is not None:
         return status_code in [429, 500, 502, 503, 504]
 
@@ -34,6 +49,9 @@ def _is_retriable_error(message: str | None, status_code: int | None = None) -> 
         "quota exceeded",
         "too many requests",
         "service unavailable",
+        "unavailable",
+        "high demand",
+        "overloaded",
         "internal server error",
         "bad gateway",
         "gateway timeout",
@@ -47,6 +65,26 @@ def _is_retriable_error(message: str | None, status_code: int | None = None) -> 
     return any(pattern in msg for pattern in retriable_patterns)
 
 
+def api_error_from_exception(exc: Exception) -> Exception:
+    """Normalize provider errors so retry/fallback logic can classify them."""
+    if isinstance(exc, RetriableError):
+        return exc
+
+    message = str(exc)
+    status_code = (
+        getattr(exc, "status_code", None)
+        or getattr(exc, "code", None)
+        or extract_status_code(message)
+    )
+    if isinstance(status_code, str) and status_code.isdigit():
+        status_code = int(status_code)
+
+    if _is_retriable_error(message, status_code if isinstance(status_code, int) else None):
+        return RetriableError(message, status_code=status_code if isinstance(status_code, int) else None)
+
+    return exc
+
+
 def calculate_delay(attempt: int, config: dict[str, Any] | None = None) -> int:
     if config is None:
         config = RETRY_CONFIG
@@ -56,7 +94,11 @@ def calculate_delay(attempt: int, config: dict[str, Any] | None = None) -> int:
     return int(capped_delay + jitter)
 
 
-async def with_retry(fn: Callable[[], T | asyncio.Future[T]], options: dict[str, Any] | None = None) -> T:
+async def with_retry(
+    fn: Callable[[], T | asyncio.Future[T]],
+    options: dict[str, Any] | None = None,
+    on_retry: Callable[[int, int, str], None] | None = None,
+) -> T:
     if options is None:
         options = {}
     config = {**RETRY_CONFIG, **options}
@@ -69,16 +111,21 @@ async def with_retry(fn: Callable[[], T | asyncio.Future[T]], options: dict[str,
                 return await result
             return result
         except Exception as error:
-            last_error = error
-            is_retriable = isinstance(error, RetriableError) and error.is_retriable
+            last_error = api_error_from_exception(error)
+            is_retriable = isinstance(last_error, RetriableError) and last_error.is_retriable
             if not is_retriable:
-                is_retriable = _is_retriable_error(str(error), getattr(error, "status_code", None))
+                is_retriable = _is_retriable_error(
+                    str(last_error), getattr(last_error, "status_code", None)
+                )
 
             if not is_retriable or attempt > config["maxRetries"]:
-                raise
+                raise last_error from error
 
             delay = calculate_delay(attempt, config)
-            print(f"   ↻ Retry {attempt}/{config['maxRetries']} in {(delay / 1000):.1f}s...", flush=True)
+            msg = f"Retry {attempt}/{config['maxRetries']} in {(delay / 1000):.1f}s — {last_error}"
+            print(f"   ↻ {msg}", flush=True)
+            if on_retry:
+                on_retry(attempt, delay, str(last_error))
             await asyncio.sleep(delay / 1000)
 
     raise last_error

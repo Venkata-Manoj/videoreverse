@@ -65,6 +65,20 @@ python -m src.main ./video.mp4 --model runway_gen4_5,google_veo3_1
 python -m src.main ./video.mp4 --dry-run --verbose
 ```
 
+### Web UI (browser testing)
+
+For non-technical testers, use the built-in Web UI. It shows each pipeline step in real time (prepare → ingest → blueprint → compile → export).
+
+```bash
+pip install flask
+# or: pip install -e ".[web]"
+
+python -m web
+# Open http://127.0.0.1:7860 — upload a video and click Start analysis
+```
+
+Optional env vars: `VIDEO_REV_WEB_HOST`, `VIDEO_REV_WEB_PORT` (default `7860`), `VIDEO_REV_WEB_MAX_MB` (default `500`).
+
 ---
 
 ## ⚙️ Configuration
