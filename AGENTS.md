@@ -13,7 +13,9 @@ Video-to-prompt pipeline that deconstructs any video into a universal blueprint,
 ## Commands
 
 - `python -m src.main <path_or_url>` — full pipeline: ingest → synthesize → compile → export
+- `python -m src.main --batch <dir_or_file>` — batch process multiple videos
 - `python -m src.ingest <path_or_url>` — standalone ingestion (metadata + frames)
+- `python -m benchmark` — run prompt quality benchmarks
 - Paths auto-convert: Windows `E:\vidrev\test.mp4` → WSL `/mnt/e/vidrev/test.mp4`
 
 ## Architecture
@@ -22,6 +24,7 @@ Video-to-prompt pipeline that deconstructs any video into a universal blueprint,
 src/
 ├── main.py             ← CLI entry point
 ├── pipeline.py         ← Main orchestrator (chains all modules)
+├── batch.py            ← Multi-video batch processor (parallel + resume)
 ├── ingest.py           ← ffmpeg → metadata, frames, audio mood
 ├── synthesize.py       ← Gemini File API + responseSchema → blueprint
 ├── compile.py          ← Config-driven prompt compiler
@@ -42,6 +45,10 @@ utils/
 ├── cache.py         ← Blueprint caching
 ├── compare.py       ← Prompt comparison
 └── sampler.py       ← Smart frame sampling (ffmpeg clip + highlights)
+
+benchmark/
+├── benchmark.py      ← Prompt quality benchmark runner
+└── metrics.py        ← Quality metrics (shot count, style, action, etc.)
 ```
 
 **Flow:** Video → [sampler] → ffmpeg (metadata + audio) → Gemini File API (multimodal analysis) → template compiler → dual output
@@ -74,6 +81,9 @@ Options:
   --no-cache           Disable blueprint caching
   --wsl                Force WSL path conversion
   --win                Force Windows path mode
+  --gemini-model       Gemini model: gemini-2.5-flash, gemini-2.5-pro, gemini-2.0-flash
+  --batch <file|dir>   Process all videos in a directory or file list
+  --parallel <N>       Max concurrent videos in batch mode (default: 4)
   --help, -h           Show help
 ```
 

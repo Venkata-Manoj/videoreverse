@@ -318,7 +318,8 @@ Use these as additional hints for shot boundary detection."""
 
         system_instruction += f"\n\nFrame-aware analysis enabled. Total frames in timeline: {len(timeline_frames)}.\nEach shot MUST include frame_references correlating to the timeline."
 
-        print("🔍 Sending to Gemini for frame-aware multimodal analysis...", flush=True)
+        gemini_model = options.get("gemini_model", "gemini-2.5-flash")
+        print(f"🔍 Sending to Gemini ({gemini_model}) for frame-aware multimodal analysis...", flush=True)
         print(f"   → Frame context: {len(timeline_frames)} frames available", flush=True)
         if scene_changes:
             print(f"   → Shot boundary hints: {len(scene_changes)} potential cut points detected", flush=True)
@@ -331,7 +332,7 @@ Use these as additional hints for shot boundary detection."""
         from google.genai import types
 
         response = await _client.aio.models.generate_content(
-            model="gemini-2.5-flash",
+            model=gemini_model,
             contents=[
                 user_prompt,
                 types.FileData(file_uri=uploaded_file.uri, mime_type="video/mp4"),

@@ -22,6 +22,7 @@ SUPPORTED_MODELS = [
 SUPPORTED_FORMATS = ["json", "txt", "both", "none"]
 SUPPORTED_SAMPLE_MODES = ["full", "first-n", "highlights"]
 SUPPORTED_LOG_LEVELS = ["debug", "info", "warn", "error", "quiet"]
+SUPPORTED_GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"]
 
 
 def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
@@ -46,6 +47,9 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
         "video_type": None,
         "no_cache": False,
         "wsl_mode": None,
+        "gemini_model": "gemini-2.5-flash",
+        "batch": None,
+        "parallel": 4,
     }
 
     i = 0
@@ -134,6 +138,28 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
         elif arg == "--win":
             result["wsl_mode"] = "win"
 
+        elif arg == "--gemini-model":
+            i += 1
+            if i < len(args) and args[i] in SUPPORTED_GEMINI_MODELS:
+                result["gemini_model"] = args[i]
+            elif i < len(args):
+                raise ValueError(f'Invalid Gemini model "{args[i]}". Use: {", ".join(SUPPORTED_GEMINI_MODELS)}')
+
+        elif arg == "--batch":
+            i += 1
+            if i < len(args) and args[i]:
+                result["batch"] = args[i]
+
+        elif arg == "--parallel":
+            i += 1
+            if i < len(args):
+                try:
+                    parallel = int(args[i])
+                    if parallel > 0:
+                        result["parallel"] = parallel
+                except ValueError:
+                    pass
+
         else:
             if not arg.startswith("-") and result["video_path"] is None:
                 result["video_path"] = arg
@@ -177,6 +203,9 @@ Options:
   --no-cache           Disable response caching
   --wsl                Force WSL path conversion
   --win                Force Windows path mode
+  --gemini-model       Gemini model for analysis: {", ".join(SUPPORTED_GEMINI_MODELS)} (default: gemini-2.5-flash)
+  --batch <file>       Process all videos listed in a file (one path per line)
+  --parallel <N>       Max concurrent videos in batch mode (default: 4)
 
 Examples:
   python -m src.pipeline /mnt/e/vidrev/test1.mp4

@@ -106,7 +106,7 @@ async def run_pipeline(options: dict[str, Any]) -> dict[str, Any]:
 
         try:
             blueprint = await with_retry(
-                lambda: build_blueprint(normalized, results["steps"]["ingest"]),
+                lambda: build_blueprint(normalized, results["steps"]["ingest"], options),
                 {"maxRetries": options.get("max_retries", RETRY_CONFIG["maxRetries"])},
             )
 
