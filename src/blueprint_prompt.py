@@ -19,72 +19,145 @@ IMPORTANT: For each shot, you MUST:
 3. Create traceability between your analysis and the source frames"""
 
 BLUEPRINT_SCHEMA = {
-    'type': 'OBJECT',
-    'properties': {
-        'global_aesthetic': {
-            'type': 'OBJECT',
-            'properties': {
-                'art_style': {'type': 'STRING', 'description': 'Overall visual style (e.g., photorealistic CGI, live-action documentary, 2D anime, stop-motion, screen recording, drone aerial, vlog handheld)'},
-                'color_grading': {'type': 'STRING', 'description': 'Color palette and grading approach (e.g., warm golden hour, cool blue tones, high-contrast neon, natural daylight, desaturated moody)'},
-                'lighting_setup': {'type': 'STRING', 'description': 'Lighting configuration (e.g., soft diffused studio lights, harsh direct sunlight, neon-lit night scene, natural window light, fluorescent office lighting)'},
-                '_audio_mood': {'type': 'STRING', 'description': 'Audio mood classification (e.g., dynamic, contemplative, documentary, atmospheric)'},
+    "type": "OBJECT",
+    "properties": {
+        "global_aesthetic": {
+            "type": "OBJECT",
+            "properties": {
+                "art_style": {
+                    "type": "STRING",
+                    "description": "Overall visual style (e.g., photorealistic CGI, live-action documentary, 2D anime, stop-motion, screen recording, drone aerial, vlog handheld)",
+                },
+                "color_grading": {
+                    "type": "STRING",
+                    "description": "Color palette and grading approach (e.g., warm golden hour, cool blue tones, high-contrast neon, natural daylight, desaturated moody)",
+                },
+                "lighting_setup": {
+                    "type": "STRING",
+                    "description": "Lighting configuration (e.g., soft diffused studio lights, harsh direct sunlight, neon-lit night scene, natural window light, fluorescent office lighting)",
+                },
+                "_audio_mood": {
+                    "type": "STRING",
+                    "description": "Audio mood classification (e.g., dynamic, contemplative, documentary, atmospheric)",
+                },
             },
-            'required': ['art_style', 'color_grading', 'lighting_setup'],
+            "required": ["art_style", "color_grading", "lighting_setup"],
         },
-        'chronological_shots': {
-            'type': 'ARRAY',
-            'description': 'Every distinct shot or scene change in the video, in chronological order. Include even brief cuts, transitions, and title cards.',
-            'items': {
-                'type': 'OBJECT',
-                'properties': {
-                    'shot_index': {'type': 'INTEGER', 'description': 'Zero-based sequential index'},
-                    'start_time_seconds': {'type': 'NUMBER', 'format': 'float', 'description': 'When this shot begins in the video (seconds)'},
-                    'end_time_seconds': {'type': 'NUMBER', 'format': 'float', 'description': 'When this shot ends in the video (seconds)'},
-                    'duration_seconds': {'type': 'NUMBER', 'format': 'float', 'description': 'Approximate duration of this shot in seconds'},
-                    'camera_direction': {'type': 'STRING', 'description': 'Camera movement and lens behavior (e.g., static tripod, slow push-in, handheld shake, smooth gimbal pan, drone orbit, zoom rack focus, whip pan, tilt down)'},
-                    'framing_type': {'type': 'STRING', 'description': "Shot framing (e.g., extreme wide establishing, wide, medium wide, medium, medium close-up, close-up, extreme close-up, over-the-shoulder, point-of-view, top-down bird's-eye, low-angle hero, dutch angle)"},
-                    'action_and_motion': {'type': 'STRING', 'description': 'What happens in this shot — subject actions, object movements, physics, interactions, emotional expressions, text animations, UI interactions. Be specific and detailed enough to recreate the exact visual.'},
-                    'environment_context': {'type': 'STRING', 'description': 'The setting, background, and spatial context. Include surfaces, architecture, weather, time of day, crowd density, interior vs exterior, and any visible text or branding.'},
-                    'negative_elements': {
-                        'type': 'ARRAY',
-                        'description': 'Visual elements that should NOT appear or that are absent in this shot (e.g., no people in background, no text overlays, no watermarks, no lens flare, no motion blur)',
-                        'items': {'type': 'STRING'},
+        "chronological_shots": {
+            "type": "ARRAY",
+            "description": "Every distinct shot or scene change in the video, in chronological order. Include even brief cuts, transitions, and title cards.",
+            "items": {
+                "type": "OBJECT",
+                "properties": {
+                    "shot_index": {"type": "INTEGER", "description": "Zero-based sequential index"},
+                    "start_time_seconds": {
+                        "type": "NUMBER",
+                        "format": "float",
+                        "description": "When this shot begins in the video (seconds)",
                     },
-                    'frame_references': {
-                        'type': 'ARRAY',
-                        'description': 'Which extracted frames informed this shot analysis. Correlate with peepshow timeline frames.',
-                        'items': {
-                            'type': 'OBJECT',
-                            'properties': {
-                                'frame_index': {'type': 'INTEGER', 'description': 'Zero-based index of the frame in the timeline_frames array'},
-                                'timestamp_seconds': {'type': 'NUMBER', 'format': 'float', 'description': 'Timestamp of this frame in seconds'},
-                                'motion_level': {'type': 'STRING', 'description': 'Motion level at this frame: low, medium, or high'},
-                                'relevance': {'type': 'STRING', 'description': 'How relevant this frame is: key_frame, transition_frame, or supporting'},
+                    "end_time_seconds": {
+                        "type": "NUMBER",
+                        "format": "float",
+                        "description": "When this shot ends in the video (seconds)",
+                    },
+                    "duration_seconds": {
+                        "type": "NUMBER",
+                        "format": "float",
+                        "description": "Approximate duration of this shot in seconds",
+                    },
+                    "camera_direction": {
+                        "type": "STRING",
+                        "description": "Camera movement and lens behavior (e.g., static tripod, slow push-in, handheld shake, smooth gimbal pan, drone orbit, zoom rack focus, whip pan, tilt down)",
+                    },
+                    "framing_type": {
+                        "type": "STRING",
+                        "description": "Shot framing (e.g., extreme wide establishing, wide, medium wide, medium, medium close-up, close-up, extreme close-up, over-the-shoulder, point-of-view, top-down bird's-eye, low-angle hero, dutch angle)",
+                    },
+                    "action_and_motion": {
+                        "type": "STRING",
+                        "description": "What happens in this shot — subject actions, object movements, physics, interactions, emotional expressions, text animations, UI interactions. Be specific and detailed enough to recreate the exact visual.",
+                    },
+                    "environment_context": {
+                        "type": "STRING",
+                        "description": "The setting, background, and spatial context. Include surfaces, architecture, weather, time of day, crowd density, interior vs exterior, and any visible text or branding.",
+                    },
+                    "negative_elements": {
+                        "type": "ARRAY",
+                        "description": "Visual elements that should NOT appear or that are absent in this shot (e.g., no people in background, no text overlays, no watermarks, no lens flare, no motion blur)",
+                        "items": {"type": "STRING"},
+                    },
+                    "frame_references": {
+                        "type": "ARRAY",
+                        "description": "Which extracted frames informed this shot analysis. Correlate with peepshow timeline frames.",
+                        "items": {
+                            "type": "OBJECT",
+                            "properties": {
+                                "frame_index": {
+                                    "type": "INTEGER",
+                                    "description": "Zero-based index of the frame in the timeline_frames array",
+                                },
+                                "timestamp_seconds": {
+                                    "type": "NUMBER",
+                                    "format": "float",
+                                    "description": "Timestamp of this frame in seconds",
+                                },
+                                "motion_level": {
+                                    "type": "STRING",
+                                    "description": "Motion level at this frame: low, medium, or high",
+                                },
+                                "relevance": {
+                                    "type": "STRING",
+                                    "description": "How relevant this frame is: key_frame, transition_frame, or supporting",
+                                },
                             },
                         },
                     },
-                    'shot_boundaries': {
-                        'type': 'OBJECT',
-                        'description': 'Information about how this shot boundary was determined',
-                        'properties': {
-                            'detected_by': {'type': 'STRING', 'description': 'How the boundary was detected: motion_change, scene_cut, audio_cue, manual'},
-                            'confidence': {'type': 'STRING', 'description': 'Confidence level: high, medium, low'},
-                            'correlated_frames': {'type': 'ARRAY', 'items': {'type': 'INTEGER'}, 'description': 'Frame indices at the boundary'},
+                    "shot_boundaries": {
+                        "type": "OBJECT",
+                        "description": "Information about how this shot boundary was determined",
+                        "properties": {
+                            "detected_by": {
+                                "type": "STRING",
+                                "description": "How the boundary was detected: motion_change, scene_cut, audio_cue, manual",
+                            },
+                            "confidence": {"type": "STRING", "description": "Confidence level: high, medium, low"},
+                            "correlated_frames": {
+                                "type": "ARRAY",
+                                "items": {"type": "INTEGER"},
+                                "description": "Frame indices at the boundary",
+                            },
                         },
                     },
                 },
-                'required': ['shot_index', 'start_time_seconds', 'end_time_seconds', 'duration_seconds', 'camera_direction', 'framing_type', 'action_and_motion', 'environment_context', 'negative_elements', 'frame_references'],
+                "required": [
+                    "shot_index",
+                    "start_time_seconds",
+                    "end_time_seconds",
+                    "duration_seconds",
+                    "camera_direction",
+                    "framing_type",
+                    "action_and_motion",
+                    "environment_context",
+                    "negative_elements",
+                    "frame_references",
+                ],
             },
         },
-        '_metadata': {
-            'type': 'OBJECT',
-            'description': 'Internal tracking metadata',
-            'properties': {
-                'total_frames_analyzed': {'type': 'INTEGER', 'description': 'Total frames from peepshow used in analysis'},
-                'shots_with_frame_traceability': {'type': 'INTEGER', 'description': 'Number of shots with valid frame references'},
-                'analysis_timestamp': {'type': 'STRING', 'description': 'ISO timestamp of when analysis was performed'},
+        "_metadata": {
+            "type": "OBJECT",
+            "description": "Internal tracking metadata",
+            "properties": {
+                "total_frames_analyzed": {
+                    "type": "INTEGER",
+                    "description": "Total frames from peepshow used in analysis",
+                },
+                "shots_with_frame_traceability": {
+                    "type": "INTEGER",
+                    "description": "Number of shots with valid frame references",
+                },
+                "analysis_timestamp": {"type": "STRING", "description": "ISO timestamp of when analysis was performed"},
             },
         },
     },
-    'required': ['global_aesthetic', 'chronological_shots'],
+    "required": ["global_aesthetic", "chronological_shots"],
 }

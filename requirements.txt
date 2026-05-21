@@ -1,2 +1,9 @@
+# Core dependencies
 google-genai>=1.0.0
 python-dotenv>=1.0.0
+
+# Dev dependencies
+ruff>=0.4.0
+pytest>=8.0.0
+build>=1.0.0
+wheel>=0.40.0

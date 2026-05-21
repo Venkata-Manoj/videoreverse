@@ -7,11 +7,7 @@ __pycache__/
 dist/
 build/
 *.egg
-
-# Dependencies
-node_modules/
-.pnp
-.pnp.js
+.venv/
 
 # Generated outputs
 output_blueprints/
@@ -32,20 +28,14 @@ test_results/
 
 # Logs
 *.log
-npm-debug.log*
 
 # Temporary files
 tmp/
 temp/
 *.tmp
 
-# Build artifacts
-dist/
-build/
-
 # Coverage
 coverage/
-.nyc_output/
 
 # Secrets (never commit)
 *.pem
