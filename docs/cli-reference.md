@@ -4,13 +4,13 @@
 
 ### Main Pipeline
 ```bash
-node src/main.js <video_path_or_url> [options]
+python -m src.main <video_path_or_url> [options]
 ```
 
 ### Individual Modules
 ```bash
-node src/pipeline.js <video>      # Full pipeline
-node src/ingest.js <video>        # Ingestion only
+python -m src.pipeline <video>      # Full pipeline
+python -m src.ingest <video>        # Ingestion only
 ```
 
 ## Options
@@ -37,22 +37,22 @@ node src/ingest.js <video>        # Ingestion only
 
 ```bash
 # Basic usage
-node src/main.js ./video.mp4
+python -m src.main ./video.mp4
 
 # Specific models
-node src/main.js ./video.mp4 --model runway_gen4_5,google_veo3_1
+python -m src.main ./video.mp4 --model runway_gen4_5,google_veo3_1
 
 # Text output only
-node src/main.js ./video.mp4 --format txt
+python -m src.main ./video.mp4 --format txt
 
 # Dry run with verbose
-node src/main.js ./video.mp4 --dry-run --verbose
+python -m src.main ./video.mp4 --dry-run --verbose
 
 # Custom output
-node src/main.js ./video.mp4 --output-dir my_results --format json
+python -m src.main ./video.mp4 --output-dir my_results --format json
 
 # Help
-node src/main.js --help
+python -m src.main --help
 ```
 
 ## Environment Variables

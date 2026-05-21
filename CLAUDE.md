@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## 📋 Project Overview
-VideoReverse is a Universal Video-to-Prompt Pipeline that deconstructs any video into production-ready prompts for 8+ video AI models. The workflow follows: Video Input → Ingestion (peepshow) → Blueprint Synthesis (Gemini) → Prompt Compilation (Templates) → Export (JSON/TXT).
+VideoReverse is a Universal Video-to-Prompt Pipeline that deconstructs any video into production-ready prompts for 8+ video AI models. The workflow follows: Video Input → Ingestion (ffmpeg) → Blueprint Synthesis (Gemini) → Prompt Compilation (Templates) → Export (JSON/TXT).
 
 ## 🔧 Development Commands
 
@@ -11,9 +11,6 @@ VideoReverse is a Universal Video-to-Prompt Pipeline that deconstructs any video
 ```bash
 # Install Python dependencies
 pip install -r requirements.txt
-
-# Install peepshow globally (required for video processing)
-npm i -g peepshow
 
 # Configure environment
 cp .env.example .env
@@ -59,7 +56,7 @@ docker run -v ./videos:/data/videos -e GEMINI_API_KEY=your_key vidrev ./data/vid
 ## 🏗️ Architecture Overview
 
 ### Core Pipeline Flow
-1. **Ingestion** (`src/ingest.py`) - Uses peepshow to extract video/audio metadata, transcripts, and frame analysis
+1. **Ingestion** (`src/ingest.py`) - Uses ffmpeg to extract video/audio metadata, transcripts, and frame analysis
 2. **Blueprint Synthesis** (`src/synthesize.py`) - Uses Gemini File API to create universal video blueprint
 3. **Prompt Compilation** (`src/compile.py`) - Applies templates to generate model-specific prompts
 4. **Export** (`src/export.py`) - Formats output as JSON and/or human-readable text
@@ -83,7 +80,7 @@ videoreverse/
 ├── src/                  # Source code
 │   ├── main.py           # CLI entry point
 │   ├── pipeline.py       # Main orchestrator with retry/fallback logic
-│   ├── ingest.py         # Video ingestion using peepshow
+│   ├── ingest.py         # Video ingestion using ffmpeg
 │   ├── synthesize.py     # Gemini-powered blueprint synthesis
 │   ├── compile.py        # Template-based prompt compilation
 │   ├── export.py         # JSON/TXT output formatting
@@ -97,17 +94,16 @@ videoreverse/
 
 ## ⚠️ Important Notes
 - Requires Python 3.12+ (use pyenv for version management)
-- peepshow must be installed globally (`npm i -g peepshow`)
 - GEMINI_API_KEY is required in .env file
 - Outputs are saved to `output_blueprints/` directory by default
-- The project includes comprehensive error handling with helpful messages for common issues (missing peepshow, invalid API key, file not found)
+- The project includes comprehensive error handling with helpful messages for common issues (missing ffmpeg, invalid API key, file not found)
 - Supports dry-run mode for testing without saving files
 - Implements retry mechanism for API rate limits and transient failures
 - Includes fallback blueprint generation when primary synthesis fails
 
 ## 🧪 Testing Guidelines
 - Test videos are referenced in README (test1.mp4 for CGI/Animation)
-- Unit tests should mock external dependencies (peepshow, Gemini API)
+- Unit tests should mock external dependencies (ffmpeg, Gemini API)
 - Integration tests can use actual test videos
 - Linting follows Python conventions
 - Validation ensures output matches expected schema

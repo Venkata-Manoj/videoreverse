@@ -7,8 +7,7 @@ Thank you for your interest in contributing!
 ### Prerequisites
 
 - Python 3.12+
-- peepshow (`npm i -g peepshow`)
-- ffmpeg (for smart sampling)
+- ffmpeg (for smart sampling and video analysis)
 - GEMINI_API_KEY in `.env`
 
 ### Quick Start

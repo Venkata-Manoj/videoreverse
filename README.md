@@ -104,7 +104,7 @@ python -m src.main ./video.mp4 --dry-run --verbose
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │   Video     │────▶│   Ingest    │────▶│  Synthesize │────▶│   Compile   │────▶│   Export    │
-│   Input     │     │  (peepshow) │     │   (Gemini)  │     │  (Templates)│     │ (JSON/TXT)  │
+│   Input     │     │   (ffmpeg)  │     │   (Gemini)  │     │  (Templates)│     │ (JSON/TXT)  │
 └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
                         │                    │                    │                    │
                    metadata            blueprint             prompts             output
@@ -283,9 +283,8 @@ videoreverse/
 
 | Component | Supported Versions |
 |-----------|-------------------|
-| Python | 3.12+ |
-| Node.js | 18+ (for peepshow CLI only) |
-| peepshow | Latest |
+| Python | 3.11+ |
+| ffmpeg | Latest |
 | Gemini API | v1 |
 | OS | Ubuntu, Windows (WSL), macOS |
 | Video formats | MP4, MOV, AVI, WebM (ffmpeg-supported) |

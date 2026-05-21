@@ -16,7 +16,7 @@ LINT_RULES = [
     {"pattern": re.compile(r"import\s+os\s*$"), "message": None, "skip": True},
 ]
 
-EXCLUDED_DIRS = {"__pycache__", ".cache", "output_blueprints", "test_results", "node_modules", ".git"}
+EXCLUDED_DIRS = {"__pycache__", ".cache", "output_blueprints", "test_results", ".git", ".venv"}
 EXCLUDED_FILES = {"lint.py"}
 
 

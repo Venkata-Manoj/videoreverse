@@ -6,10 +6,7 @@ LABEL description="Universal Video-to-Prompt Pipeline"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
-    nodejs \
-    npm \
-    && rm -rf /var/lib/apt/lists/* \
-    && npm install -g peepshow
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

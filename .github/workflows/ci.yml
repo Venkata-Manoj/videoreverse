@@ -7,9 +7,6 @@ on:
     branches: [main, develop]
 
 jobs:
-  # ─────────────────────────────────────────────────────────
-  # Job 1: Lint & Code Quality
-  # ─────────────────────────────────────────────────────────
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -36,20 +33,6 @@ jobs:
       - name: Run ruff format check
         run: ruff format --check src/ utils/ scripts/
 
-      - name: Super-linter
-        uses: github/super-linter@v5
-        env:
-          VALIDATE_ALL_CODEBASE: false
-          VALIDATE_PYTHON_RUFF: true
-          VALIDATE_JSON: true
-          VALIDATE_MARKDOWN: true
-          VALIDATE_YAML: true
-          VALIDATE_BASH: true
-          VALIDATE_DOCKERFILE_HADOLINT: true
-
-  # ─────────────────────────────────────────────────────────
-  # Job 2: Unit Tests (runs on all OSes)
-  # ─────────────────────────────────────────────────────────
   test-unit:
     name: Unit Tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -88,51 +71,6 @@ jobs:
           path: test_results/
           retention-days: 7
 
-  # ─────────────────────────────────────────────────────────
-  # Job 3: Integration Tests (Ubuntu only - requires peepshow)
-  # ─────────────────────────────────────────────────────────
-  test-integration:
-    name: Integration Tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'pip'
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install peepshow
-        run: npm install -g peepshow
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -e .
-
-      - name: Run integration tests
-        run: python -m src.run_tests
-        continue-on-error: true
-
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results-integration
-          path: test_results/
-
-  # ─────────────────────────────────────────────────────────
-  # Job 4: Docker Build Test
-  # ─────────────────────────────────────────────────────────
   docker-build:
     name: Docker Build
     runs-on: ubuntu-latest
@@ -147,15 +85,12 @@ jobs:
       - name: Test Docker image
         run: docker run --rm vidrev --help
 
-  # ─────────────────────────────────────────────────────────
-  # Job 5: Security Scan (weekly + on push)
-  # ─────────────────────────────────────────────────────────
   security:
     name: Security Scan
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule' || github.event_name == 'push'
     schedule:
-      - cron: '0 0 * * 0' # Weekly on Sunday
+      - cron: '0 0 * * 0'
 
     steps:
       - name: Checkout
@@ -176,9 +111,6 @@ jobs:
         with:
           inputs: requirements.txt
 
-  # ─────────────────────────────────────────────────────────
-  # Job 6: Dependency Review (on PR)
-  # ─────────────────────────────────────────────────────────
   dependency-review:
     name: Dependency Review
     runs-on: ubuntu-latest

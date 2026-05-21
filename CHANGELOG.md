@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `pipeline.js` — Main orchestrator chaining all modules
-- `ingest.js` — peepshow CLI integration, metadata extraction, path normalization
+- `ingest.py` — ffmpeg integration, metadata extraction, path normalization
 - `synthesize.js` — Gemini File API upload with responseSchema
 - `compile.js` — Config-driven prompt compiler
 - `export.js` — JSON to human-readable .txt formatter

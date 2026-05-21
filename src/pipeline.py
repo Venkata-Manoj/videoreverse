@@ -227,8 +227,8 @@ async def run_pipeline(options: dict[str, Any]) -> dict[str, Any]:
         error("pipeline", f"Error: {err}")
 
         err_str = str(err)
-        if "peepshow" in err_str:
-            print("\n   Fix: npm i -g peepshow  (requires Node 22+)", flush=True)
+        if "ffmpeg" in err_str:
+            print("\n   Fix: apt install ffmpeg  (or brew install ffmpeg)", flush=True)
         elif "GEMINI_API_KEY" in err_str:
             print("\n   Fix: Add GEMINI_API_KEY to .env file", flush=True)
         elif "not found" in err_str:

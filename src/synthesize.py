@@ -43,7 +43,7 @@ def _build_frame_context(timeline_frames: list[dict[str, Any]]) -> str:
     if not timeline_frames or len(timeline_frames) == 0:
         return "- Frames extracted: 0"
 
-    lines = ["- Frame timeline (peepshow extracted keyframes):"]
+    lines = ["- Frame timeline (ffmpeg extracted keyframes):"]
     lines.append(f"  Total frames: {len(timeline_frames)}")
 
     high_motion_frames = [f for f in timeline_frames if f.get("motion_level") == "high"]

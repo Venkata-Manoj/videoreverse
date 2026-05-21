@@ -7,8 +7,7 @@ Video-to-prompt pipeline that deconstructs any video into a universal blueprint,
 ## Prerequisites
 
 - **Python 3.12+** required. Use `pyenv install 3.12` if needed.
-- `peepshow` must be installed globally (`npm i -g peepshow`) — the core frame extraction engine (requires Node.js 18+).
-- `ffmpeg` for smart sampling.
+- `ffmpeg` for smart sampling and video analysis.
 - `GEMINI_API_KEY` in `.env` file — for blueprint synthesis via Gemini File API.
 
 ## Commands
@@ -23,7 +22,7 @@ Video-to-prompt pipeline that deconstructs any video into a universal blueprint,
 src/
 ├── main.py             ← CLI entry point
 ├── pipeline.py         ← Main orchestrator (chains all modules)
-├── ingest.py           ← peepshow CLI → metadata, frames, audio mood
+├── ingest.py           ← ffmpeg → metadata, frames, audio mood
 ├── synthesize.py       ← Gemini File API + responseSchema → blueprint
 ├── compile.py          ← Config-driven prompt compiler
 ├── export.py           ← JSON → human-readable .txt format
@@ -45,7 +44,7 @@ utils/
 └── sampler.py       ← Smart frame sampling (ffmpeg clip + highlights)
 ```
 
-**Flow:** Video → [sampler] → peepshow (metadata + audio) → Gemini File API (multimodal analysis) → template compiler → dual output
+**Flow:** Video → [sampler] → ffmpeg (metadata + audio) → Gemini File API (multimodal analysis) → template compiler → dual output
 
 **Universal Schema:** `{ global_aesthetic, chronological_shots[] }` — enforced via `responseSchema`
 
@@ -93,7 +92,7 @@ Options:
 ## Gotchas
 
 - **WSL-native pipeline.** Run from WSL. Windows paths auto-convert.
-- **peepshow output can be large** — subprocess handles large output automatically.
+- **ffmpeg output can be large** — subprocess handles large output automatically.
 - **Gemini File API uploads full video** — large files cost more tokens.
 - **Uploaded files deleted** after blueprint generation.
 - **No external validation library** — lightweight custom validation.

@@ -10,7 +10,7 @@ cat > "$BADGES_FILE" << 'EOF'
 
 | Badge | URL |
 |-------|-----|
-| Node.js | ![Node](https://img.shields.io/badge/node-22%2B-brightgreen) |
+| Python | ![Python](https://img.shields.io/badge/python-3.11%2B-blue) |
 | License | ![License](https://img.shields.io/badge/license-MIT-blue) |
 | CI | ![CI](https://github.com/vidrev/vidrev/workflows/CI/badge.svg) |
 | Dependencies | ![Dependencies](https://img.shields.io/badge/dependencies-up%20to%20date-brightgreen) |

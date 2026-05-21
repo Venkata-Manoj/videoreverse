@@ -88,7 +88,7 @@ BLUEPRINT_SCHEMA = {
                     },
                     "frame_references": {
                         "type": "ARRAY",
-                        "description": "Which extracted frames informed this shot analysis. Correlate with peepshow timeline frames.",
+                        "description": "Which extracted frames informed this shot analysis. Correlate with ffmpeg timeline frames.",
                         "items": {
                             "type": "OBJECT",
                             "properties": {
@@ -149,7 +149,7 @@ BLUEPRINT_SCHEMA = {
             "properties": {
                 "total_frames_analyzed": {
                     "type": "INTEGER",
-                    "description": "Total frames from peepshow used in analysis",
+                    "description": "Total frames from ffmpeg used in analysis",
                 },
                 "shots_with_frame_traceability": {
                     "type": "INTEGER",

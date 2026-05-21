@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import glob
+import json
 import math
 import os
 import re
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -23,10 +26,10 @@ def _normalize_path(target: str | Any) -> str | Any:
     return os.path.abspath(target)
 
 
-def _check_peepshow() -> bool:
+def _check_ffmpeg() -> bool:
     try:
-        result = subprocess.run(["peepshow", "--help"], capture_output=True, text=True, timeout=10)
-        return "peepshow" in result.stdout or "peepshow" in result.stderr
+        result = subprocess.run(["ffprobe", "-version"], capture_output=True, text=True, timeout=10)
+        return result.returncode == 0
     except Exception:
         return False
 
@@ -188,78 +191,108 @@ def ingest_video(video_target: str) -> dict[str, Any]:
         print(f"   → Resolved: {normalized}", flush=True)
     print(flush=True)
 
-    peepshow_available = _check_peepshow()
-    if not peepshow_available:
-        print("❌ peepshow not found on PATH.", flush=True)
-        print("   Fix: npm i -g peepshow", flush=True)
-        print("   Requires Node.js 22+ (use nvm install 22)\n", flush=True)
-        raise RuntimeError("peepshow not found")
+    ffmpeg_available = _check_ffmpeg()
+    if not ffmpeg_available:
+        print("❌ ffmpeg not found on PATH.", flush=True)
+        print("   Fix: apt install ffmpeg  (or brew install ffmpeg)", flush=True)
+        raise RuntimeError("ffmpeg not found")
 
     try:
-        command = ["peepshow", normalized, "--emit", "json", "--stats", "off"]
-
-        result = subprocess.run(command, capture_output=True, text=True, check=True, timeout=300)
-
-        stdout = result.stdout
-        json_start = stdout.find("{")
-        json_end = stdout.rfind("}")
-        if json_start == -1 or json_end == -1:
-            raise RuntimeError("peepshow output contained no JSON payload")
-
-        raw = __import__("json").loads(stdout[json_start : json_end + 1])
-
         filename = normalized.split("/").pop() if "://" in normalized else os.path.basename(normalized)
 
-        has_audio = bool(raw.get("audio", {}).get("path") and not raw.get("audio", {}).get("skippedReason"))
-        audio_mood = _analyze_audio_mood(raw.get("audio", {}))
-        timeline_frames = _extract_frame_metadata(raw.get("frames", []), raw.get("video", {}).get("fps", 30))
+        # Get video metadata via ffprobe
+        probe_cmd = [
+            "ffprobe", "-v", "quiet", "-print_format", "json",
+            "-show_format", "-show_streams", normalized,
+        ]
+        probe_result = subprocess.run(probe_cmd, capture_output=True, text=True, check=True, timeout=60)
+        probe_data = json.loads(probe_result.stdout)
 
-        video_info = raw.get("video", {})
-        audio_info = raw.get("audio", {})
-        extraction_info = raw.get("extraction", {})
+        video_stream = next((s for s in probe_data.get("streams", []) if s.get("codec_type") == "video"), {})
+        audio_stream = next((s for s in probe_data.get("streams", []) if s.get("codec_type") == "audio"), {})
+        fmt = probe_data.get("format", {})
+
+        width = int(video_stream.get("width", 0))
+        height = int(video_stream.get("height", 0))
+        fps_str = video_stream.get("r_frame_rate", "30/1")
+        fps_num, fps_den = map(int, fps_str.split("/")) if "/" in fps_str else (30, 1)
+        fps = fps_num / fps_den if fps_den else 30
+        duration = float(fmt.get("duration", 0))
+        codec = video_stream.get("codec_name", "unknown")
+        container = os.path.splitext(normalized)[1].lstrip(".") or "unknown"
+        bitrate = int(fmt.get("bit_rate", 0)) // 1000 if fmt.get("bit_rate") else 0
+
+        has_audio = bool(audio_stream)
+        audio_codec = audio_stream.get("codec_name")
+
+        # Extract keyframes using ffmpeg
+        temp_dir = tempfile.mkdtemp(prefix="vidrev-frames-")
+        frame_pattern = os.path.join(temp_dir, "frame_%04d.jpg")
+        extract_cmd = [
+            "ffmpeg", "-i", normalized, "-vf", "select='eq(pict_type,I)',showinfo",
+            "-vsync", "vfr", "-q:v", "2", frame_pattern,
+            "-hide_banner", "-loglevel", "error", "-y",
+        ]
+        subprocess.run(extract_cmd, capture_output=True, text=True, timeout=300)
+
+        # Count extracted frames
+        frame_files = sorted(glob.glob(frame_pattern.replace("%04d.jpg", "*.jpg")))
+        timeline_frames = []
+        for i, frame_path in enumerate(frame_files):
+            timestamp = i / fps if fps > 0 else 0
+            frame_size = os.path.getsize(frame_path)
+            motion_level = "low" if frame_size < 30000 else ("high" if frame_size > 150000 else "medium")
+            timeline_frames.append({
+                "index": i,
+                "path": frame_path,
+                "bytes": frame_size,
+                "timestamp_seconds": timestamp,
+                "motion_level": motion_level,
+                "frame_hash": _generate_simple_hash(frame_path + str(i)),
+            })
+
+        scene_changes = _detect_scene_changes(timeline_frames)
+
+        audio_data = {
+            "has_audio": has_audio,
+            "audio_path": None,
+            "transcript": "",
+            "transcript_segments": [],
+            "audio_codec": audio_codec,
+            "silence_ratio": None,
+            "mood": _analyze_audio_mood({"codec": audio_codec, "silenceRatio": 0, "transcript": {"text": ""}}),
+        }
 
         return {
             "pipeline_step": "1_ingestion_and_sampling",
             "video_metadata": {
                 "filename": filename,
                 "source_path": normalized,
-                "duration_seconds": video_info.get("durationSeconds", 0),
-                "width": video_info.get("width", 0),
-                "height": video_info.get("height", 0),
-                "dimensions": f"{video_info.get('width', 0)}x{video_info.get('height', 0)}",
-                "aspect_ratio": _compute_aspect_ratio(video_info.get("width"), video_info.get("height")),
-                "fps": video_info.get("fps", 0),
-                "codec": video_info.get("codec", "unknown"),
-                "container": video_info.get("container", "unknown"),
-                "bitrate_kbps": video_info.get("bitrateKbps", 0),
+                "duration_seconds": duration,
+                "width": width,
+                "height": height,
+                "dimensions": f"{width}x{height}",
+                "aspect_ratio": _compute_aspect_ratio(width, height),
+                "fps": fps,
+                "codec": codec,
+                "container": container,
+                "bitrate_kbps": bitrate,
             },
-            "audio_data": {
-                "has_audio": has_audio,
-                "audio_path": audio_info.get("path"),
-                "transcript": audio_info.get("transcript", {}).get("text", "")
-                if isinstance(audio_info.get("transcript"), dict)
-                else "",
-                "transcript_segments": audio_info.get("transcript", {}).get("segments", [])
-                if isinstance(audio_info.get("transcript"), dict)
-                else [],
-                "audio_codec": audio_info.get("codec"),
-                "silence_ratio": audio_info.get("silenceRatio"),
-                "mood": audio_mood,
-            },
+            "audio_data": audio_data,
             "extraction": {
-                "strategy": extraction_info.get("strategy", "unknown"),
-                "motion_signal_level": extraction_info.get("motionSignalLevel", "unknown"),
-                "frames_emitted": extraction_info.get("framesEmitted", 0),
-                "frames_deduped": extraction_info.get("framesDeduped", 0),
-                "elapsed_ms": extraction_info.get("elapsedMs", 0),
+                "strategy": "ffmpeg_keyframes",
+                "motion_signal_level": "medium",
+                "frames_emitted": len(timeline_frames),
+                "frames_deduped": len(timeline_frames),
+                "elapsed_ms": 0,
             },
-            "timeline_frames": timeline_frames["frames"],
-            "scene_changes": timeline_frames.get("scene_changes", []),
-            "output_dir": raw.get("outputDir"),
+            "timeline_frames": timeline_frames,
+            "scene_changes": scene_changes,
+            "output_dir": temp_dir,
         }
     except subprocess.CalledProcessError as error:
         print(f"❌ Step 1 failed: {error.stderr}", flush=True)
-        raise RuntimeError(f"peepshow failed: {error.stderr}") from error
+        raise RuntimeError(f"ffmpeg failed: {error.stderr}") from error
     except Exception as error:
         print(f"❌ Step 1 failed: {error}", flush=True)
         raise
