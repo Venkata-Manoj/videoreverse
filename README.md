@@ -37,7 +37,7 @@ VideoReverse analyzes videos using AI to generate production-ready prompts for v
 - **ffmpeg** — for smart sampling (`apt install ffmpeg` or `brew install ffmpeg`)
 - **GEMINI_API_KEY** — Get from [Google AI Studio](https://aistudio.google.com/)
 
-Optional local transcription: `pip install -e ".[whisper]"` enables Whisper during ingest.
+Local transcription is included in the default `requirements.txt` install. For editable installs, `pip install -e ".[whisper]"` adds Whisper explicitly.
 
 ### Installation
 
@@ -71,7 +71,7 @@ Add `--no-transcribe` to skip local Whisper transcription during ingest.
 
 ### Web UI (browser testing)
 
-For non-technical testers, use the built-in Web UI. It shows each pipeline step in real time (prepare → ingest → blueprint → compile → export).
+For non-technical testers, use the built-in Web UI. It shows each pipeline step in real time (prepare → ingest → blueprint → compile → export), supports multi-file queue uploads, and lets users download saved outputs or copy generated prompts directly from the browser.
 
 ```bash
 pip install flask

@@ -1,6 +1,7 @@
 # Core dependencies
 google-genai>=1.0.0
 python-dotenv>=1.0.0
+openai-whisper>=20231117
 
 # Web UI (python -m web)
 flask>=3.0.0

@@ -9,6 +9,7 @@ Video-to-prompt pipeline that deconstructs any video into a universal blueprint,
 - **Python 3.12+** required. Use `pyenv install 3.12` if needed.
 - `ffmpeg` for smart sampling and video analysis.
 - `GEMINI_API_KEY` in `.env` file — for blueprint synthesis via Gemini File API.
+- `openai-whisper` is installed from `requirements.txt` for local transcription during ingest.
 
 ## Commands
 
@@ -16,7 +17,7 @@ Video-to-prompt pipeline that deconstructs any video into a universal blueprint,
 - `python -m src.main --batch <dir_or_file>` — batch process multiple videos
 - `python -m src.ingest <path_or_url>` — standalone ingestion (metadata + frames)
 - `python -m benchmark` — run prompt quality benchmarks
-- `python -m web` — local Web UI for non-CLI testing (requires `pip install flask` or `pip install -e ".[web]"`)
+- `python -m web` — local Web UI for non-CLI testing (upload queue, downloads, prompt copy)
 - `vidrev-web` — same as `python -m web` (after editable install)
 - Paths auto-convert: Windows `E:\vidrev\test.mp4` → WSL `/mnt/e/vidrev/test.mp4`
 
