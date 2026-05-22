@@ -22,46 +22,77 @@
     <section class="card upload-card">
       <h2>1. Choose your video</h2>
       <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Upload video">
-        <input type="file" id="video-input" accept="video/*,.mp4,.mov,.avi,.mkv,.webm,.m4v" hidden />
+        <input type="file" id="video-input" accept="video/*,.mp4,.mov,.avi,.mkv,.webm,.m4v" multiple hidden />
         <p class="drop-title">Drop a video here or click to browse</p>
         <p class="drop-hint">MP4, MOV, WebM and other formats supported by ffmpeg</p>
         <p id="file-name" class="file-name"></p>
+        <ul id="file-list" class="file-list hidden"></ul>
       </div>
 
-      <details class="options">
-        <summary>Options (optional)</summary>
-        <div class="options-grid">
-          <label>
-            AI models
-            <select id="models-select" multiple size="6"></select>
-            <span class="hint">Hold Ctrl/Cmd to pick several. Leave empty for all models.</span>
-          </label>
-          <label>
-            Sample mode
-            <select id="sample-mode">
-              <option value="full">Full video</option>
-              <option value="first-n">First N seconds</option>
-              <option value="highlights">Highlights (best motion)</option>
-            </select>
-          </label>
-          <label>
-            Max duration (seconds)
-            <input type="number" id="max-duration" min="1" step="1" placeholder="e.g. 30" />
-          </label>
-          <label>
-            Gemini model
-            <select id="gemini-model"></select>
-          </label>
-          <label class="checkbox">
-            <input type="checkbox" id="dry-run" />
-            Preview only — do not save files
-          </label>
-          <label class="checkbox">
-            <input type="checkbox" id="use-fallback" checked />
-            If Gemini is busy, continue with a metadata-based blueprint
-          </label>
-        </div>
-      </details>
+       <details class="options">
+         <summary>Options (optional)</summary>
+         <div class="options-grid">
+           <div class="profile-selector">
+             <label for="config-profile">Configuration Profile:</label>
+             <select id="config-profile">
+               <option value="custom">Custom Settings</option>
+               <option value="fast">Fast (Quick Preview)</option>
+               <option value="quality">Quality (Best Results)</option>
+               <option value="cheap">Cheap (Lowest Cost)</option>
+             </select>
+             <button id="save-profile" class="btn secondary">Save as Custom</button>
+           </div>
+           <label>
+             AI models
+             <select id="models-select" multiple size="6"></select>
+             <span class="hint">Hold Ctrl/Cmd to pick several. Leave empty for all models.</span>
+           </label>
+           <label>
+             Sample mode
+             <select id="sample-mode">
+               <option value="full">Full video</option>
+               <option value="first-n">First N seconds</option>
+               <option value="highlights">Highlights (best motion)</option>
+             </select>
+           </label>
+           <label>
+             Max duration (seconds)
+             <input type="number" id="max-duration" min="1" step="1" placeholder="e.g. 30" />
+           </label>
+           <label>
+             Gemini model
+             <select id="gemini-model"></select>
+           </label>
+           <label class="checkbox">
+             <input type="checkbox" id="dry-run" />
+             Preview only — do not save files
+           </label>
+           <label class="checkbox">
+             <input type="checkbox" id="use-fallback" checked />
+             If Gemini is busy, continue with a metadata-based blueprint
+           </label>
+           <label class="checkbox">
+             <input type="checkbox" id="no-cache" />
+             Bypass cached blueprints
+           </label>
+           <label class="checkbox">
+             <input type="checkbox" id="no-transcribe" />
+             Skip local Whisper transcription
+           </label>
+         </div>
+       </details>
+       
+       <!-- Upload Progress Bar -->
+       <div id="upload-progress" class="upload-progress hidden">
+         <div class="progress-label">Upload Progress:</div>
+         <div class="progress-bar-container">
+           <div id="upload-progress-bar" class="progress-bar"></div>
+         </div>
+         <div class="progress-details">
+           <span id="upload-percentage">0%</span>
+           <span id="upload-eta">ETA: --</span>
+         </div>
+       </div>
 
       <button id="run-btn" class="btn primary" disabled>Start analysis</button>
     </section>
@@ -84,6 +115,11 @@
     <section class="card results-card hidden" id="results-section">
       <h2>3. Results</h2>
       <div id="summary" class="summary"></div>
+      <div id="result-actions" class="result-actions hidden">
+        <button type="button" id="download-json" class="btn secondary">Download JSON</button>
+        <button type="button" id="download-txt" class="btn secondary">Download TXT</button>
+        <button type="button" id="copy-prompts" class="btn secondary">Copy prompts</button>
+      </div>
       <div class="tabs">
         <button type="button" class="tab active" data-tab="blueprint">Blueprint</button>
         <button type="button" class="tab" data-tab="prompts">Prompts</button>
