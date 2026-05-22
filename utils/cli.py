@@ -46,6 +46,7 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
         "sample_mode": "full",
         "video_type": None,
         "no_cache": False,
+        "no_transcribe": False,
         "wsl_mode": None,
         "gemini_model": "gemini-2.5-flash",
         "batch": None,
@@ -132,6 +133,9 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
         elif arg == "--no-cache":
             result["no_cache"] = True
 
+        elif arg == "--no-transcribe":
+            result["no_transcribe"] = True
+
         elif arg == "--wsl":
             result["wsl_mode"] = "wsl"
 
@@ -201,6 +205,7 @@ Options:
                         Requires ffmpeg. Reduces API cost by 50-90% for long videos (~$0.001/s for Gemini)
   --video-type         Override auto-detected video type
   --no-cache           Disable response caching
+  --no-transcribe      Skip local Whisper transcription during ingest
   --wsl                Force WSL path conversion
   --win                Force Windows path mode
   --gemini-model       Gemini model for analysis: {", ".join(SUPPORTED_GEMINI_MODELS)} (default: gemini-2.5-flash)

@@ -134,9 +134,33 @@ async def run_pipeline(
         )
         print("\n── Ingestion & Sampling ──\n", flush=True)
 
+        def _on_ingest_progress(phase: str, message: str) -> None:
+            _emit_progress(
+                on_progress,
+                "step",
+                step="ingest",
+                status="running",
+                message=message,
+                phase=phase,
+            )
+
+        def _on_ingest_retry(attempt: int, delay_ms: int, err_msg: str) -> None:
+            _emit_progress(
+                on_progress,
+                "retry",
+                step="ingest",
+                attempt=attempt,
+                max_retries=options.get("max_retries", RETRY_CONFIG["maxRetries"]),
+                delay_ms=delay_ms,
+                message=f"Ingest failed - retrying in {delay_ms / 1000:.1f}s ({attempt}/{options.get('max_retries', RETRY_CONFIG['maxRetries'])})",
+                detail=err_msg,
+            )
+
         try:
             step1_data = await with_retry(
-                lambda: ingest_video(normalized), {"maxRetries": options.get("max_retries", RETRY_CONFIG["maxRetries"])}
+                lambda: ingest_video(normalized, options=options, on_progress=_on_ingest_progress),
+                {"maxRetries": options.get("max_retries", RETRY_CONFIG["maxRetries"])},
+                on_retry=_on_ingest_retry,
             )
             results["steps"]["ingest"] = step1_data
             results["timing"]["ingest_ms"] = time.time() * 1000 - ingest_start

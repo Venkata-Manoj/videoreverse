@@ -34,6 +34,9 @@ dev = [
 web = [
     "flask>=3.0.0",
 ]
+whisper = [
+    "openai-whisper>=20231117",
+]
 
 [project.urls]
 Homepage = "https://github.com/Venkata-Manoj/videoreverse"

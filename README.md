@@ -37,6 +37,8 @@ VideoReverse analyzes videos using AI to generate production-ready prompts for v
 - **ffmpeg** — for smart sampling (`apt install ffmpeg` or `brew install ffmpeg`)
 - **GEMINI_API_KEY** — Get from [Google AI Studio](https://aistudio.google.com/)
 
+Optional local transcription: `pip install -e ".[whisper]"` enables Whisper during ingest.
+
 ### Installation
 
 ```bash
@@ -64,6 +66,8 @@ python -m src.main ./video.mp4 --model runway_gen4_5,google_veo3_1
 # Dry run (no files saved)
 python -m src.main ./video.mp4 --dry-run --verbose
 ```
+
+Add `--no-transcribe` to skip local Whisper transcription during ingest.
 
 ### Web UI (browser testing)
 
@@ -108,6 +112,7 @@ Optional env vars: `VIDEO_REV_WEB_HOST`, `VIDEO_REV_WEB_PORT` (default `7860`), 
 | `--max-duration` | Pre-clip video to N seconds | — |
 | `--video-type` | Override auto-detected video type | Auto |
 | `--no-cache` | Disable blueprint caching | `false` |
+| `--no-transcribe` | Skip local Whisper transcription | `false` |
 | `--wsl` | Force WSL path conversion | Auto |
 | `--win` | Force Windows path mode | Auto |
 
@@ -179,6 +184,9 @@ python scripts/lint.py
 
 # Validate outputs
 python scripts/validate.py
+
+# Verify the latest saved output for a video without rerunning the pipeline
+python scripts/verify_output.py test1.mp4 --strict
 
 # Run with Docker
 docker build -t vidrev .

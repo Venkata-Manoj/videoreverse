@@ -7,8 +7,10 @@ import os
 import re
 import subprocess
 import tempfile
-from pathlib import Path
-from typing import Any
+from collections.abc import Callable
+from typing import Any, cast
+
+IngestProgressCallback = Callable[[str, str], None]
 
 
 def _normalize_path(target: str | Any) -> str | Any:
@@ -49,6 +51,11 @@ def _generate_simple_hash(input_str: str) -> str:
     return format(abs(h), "08x")
 
 
+def _emit_progress(callback: IngestProgressCallback | None, phase: str, message: str) -> None:
+    if callback:
+        callback(phase, message)
+
+
 def _analyze_audio_mood(audio: dict[str, Any] | None) -> dict[str, Any] | None:
     if not audio:
         return None
@@ -83,9 +90,9 @@ def _analyze_audio_mood(audio: dict[str, Any] | None) -> dict[str, Any] | None:
     }
 
     lower_transcript = transcript.lower()
-    for m, words in keywords.items():
-        if any(w in lower_transcript for w in words):
-            mood = m
+    for mood_name, words in keywords.items():
+        if any(word in lower_transcript for word in words):
+            mood = mood_name
             break
 
     return {
@@ -113,9 +120,7 @@ def _detect_scene_changes(
         curr = frames[i]
 
         motion_changed = prev.get("motion_level") != curr.get("motion_level")
-        bytes_ratio = (
-            abs(curr.get("bytes", 0) - prev.get("bytes", 0)) / prev.get("bytes", 1) if prev.get("bytes", 0) > 0 else 0
-        )
+        bytes_ratio = abs(curr.get("bytes", 0) - prev.get("bytes", 0)) / prev.get("bytes", 1) if prev.get("bytes", 0) > 0 else 0
         is_significant_motion_change = (prev.get("motion_level") == "high" and curr.get("motion_level") == "low") or (
             prev.get("motion_level") == "low" and curr.get("motion_level") == "high"
         )
@@ -149,67 +154,101 @@ def _detect_scene_changes(
     return scene_changes
 
 
-def _extract_frame_metadata(
-    frames: list[dict[str, Any]] | None,
-    fps: float,
-) -> dict[str, list[dict[str, Any]]]:
-    if not frames or not isinstance(frames, list):
-        return {"frames": [], "scene_changes": []}
-
-    frame_data = []
-    for i, f in enumerate(frames):
-        estimated_timestamp = i / fps if fps > 0 else 0
-
-        motion_level = "medium"
-        if f.get("bytes"):
-            if f["bytes"] < 30000:
-                motion_level = "low"
-            elif f["bytes"] > 150000:
-                motion_level = "high"
-
-        frame_data.append(
-            {
-                "index": i,
-                "path": f.get("path", ""),
-                "bytes": f.get("bytes", 0),
-                "timestamp_seconds": f.get("timestampSeconds", estimated_timestamp),
-                "motion_level": f.get("motionLevel", motion_level),
-                "frame_hash": f.get("hash", _generate_simple_hash(f.get("path", "") + str(i))),
-            }
-        )
-
-    scene_changes = _detect_scene_changes(frame_data)
-
-    return {"frames": frame_data, "scene_changes": scene_changes}
+def _extract_audio_for_transcription(video_path: str, temp_dir: str) -> str | None:
+    audio_path = os.path.join(temp_dir, "audio_for_transcription.wav")
+    extract_audio_cmd = [
+        "ffmpeg",
+        "-i",
+        video_path,
+        "-vn",
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        "-c:a",
+        "pcm_s16le",
+        audio_path,
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+    ]
+    result = subprocess.run(extract_audio_cmd, capture_output=True, text=True, timeout=300)
+    if result.returncode != 0 or not os.path.exists(audio_path):
+        return None
+    return audio_path
 
 
-def ingest_video(video_target: str) -> dict[str, Any]:
-    print("🚀 VideoReverse: Step 1 — Ingestion & Sampling", flush=True)
+def _transcribe_audio(audio_path: str, model_name: str) -> dict[str, Any]:
+    try:
+        import whisper  # type: ignore[import-not-found]
+    except ImportError:
+        return {
+            "text": "",
+            "segments": [],
+            "status": "skipped",
+            "reason": "openai-whisper is not installed",
+        }
+
+    model = whisper.load_model(model_name)
+    raw_result = cast(dict[str, Any], model.transcribe(audio_path, fp16=False, verbose=False))
+    segments = [
+        {
+            "start": segment.get("start"),
+            "end": segment.get("end"),
+            "text": (segment.get("text") or "").strip(),
+        }
+        for segment in raw_result.get("segments", []) or []
+    ]
+    return {
+        "text": (raw_result.get("text") or "").strip(),
+        "segments": segments,
+        "status": "complete",
+        "reason": None,
+    }
+
+
+def ingest_video(
+    video_target: str,
+    *,
+    options: dict[str, Any] | None = None,
+    on_progress: IngestProgressCallback | None = None,
+) -> dict[str, Any]:
+    if options is None:
+        options = {}
+
+    print("VideoReverse: Step 1 - Ingestion & Sampling", flush=True)
     normalized = _normalize_path(video_target)
-    print(f"🎥 Target: {video_target}", flush=True)
+    print(f"Target: {video_target}", flush=True)
     if normalized != video_target:
-        print(f"   → Resolved: {normalized}", flush=True)
+        print(f"  -> Resolved: {normalized}", flush=True)
     print(flush=True)
 
     ffmpeg_available = _check_ffmpeg()
     if not ffmpeg_available:
-        print("❌ ffmpeg not found on PATH.", flush=True)
-        print("   Fix: apt install ffmpeg  (or brew install ffmpeg)", flush=True)
+        print("Step 1 failed: ffmpeg not found on PATH.", flush=True)
+        print("  Fix: apt install ffmpeg  (or brew install ffmpeg)", flush=True)
         raise RuntimeError("ffmpeg not found")
 
     try:
         filename = normalized.split("/").pop() if "://" in normalized else os.path.basename(normalized)
 
-        # Get video metadata via ffprobe
+        _emit_progress(on_progress, "probe", "Inspecting video streams with ffprobe")
         probe_cmd = [
-            "ffprobe", "-v", "quiet", "-print_format", "json",
-            "-show_format", "-show_streams", normalized,
+            "ffprobe",
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
+            "-show_format",
+            "-show_streams",
+            normalized,
         ]
         probe_result = subprocess.run(probe_cmd, capture_output=True, text=True, check=True, timeout=60)
         probe_data = json.loads(probe_result.stdout)
 
-        video_stream = next((s for s in probe_data.get("streams", []) if s.get("codec_type") == "video"), {})
-        audio_stream = next((s for s in probe_data.get("streams", []) if s.get("codec_type") == "audio"), {})
+        video_stream = next((stream for stream in probe_data.get("streams", []) if stream.get("codec_type") == "video"), {})
+        audio_stream = next((stream for stream in probe_data.get("streams", []) if stream.get("codec_type") == "audio"), {})
         fmt = probe_data.get("format", {})
 
         width = int(video_stream.get("width", 0))
@@ -225,42 +264,79 @@ def ingest_video(video_target: str) -> dict[str, Any]:
         has_audio = bool(audio_stream)
         audio_codec = audio_stream.get("codec_name")
 
-        # Extract keyframes using ffmpeg
         temp_dir = tempfile.mkdtemp(prefix="vidrev-frames-")
+        _emit_progress(on_progress, "frames", "Extracting keyframes with ffmpeg")
         frame_pattern = os.path.join(temp_dir, "frame_%04d.jpg")
         extract_cmd = [
-            "ffmpeg", "-i", normalized, "-vf", "select='eq(pict_type,I)',showinfo",
-            "-vsync", "vfr", "-q:v", "2", frame_pattern,
-            "-hide_banner", "-loglevel", "error", "-y",
+            "ffmpeg",
+            "-i",
+            normalized,
+            "-vf",
+            "select='eq(pict_type,I)',showinfo",
+            "-vsync",
+            "vfr",
+            "-q:v",
+            "2",
+            frame_pattern,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
         ]
         subprocess.run(extract_cmd, capture_output=True, text=True, timeout=300)
 
-        # Count extracted frames
         frame_files = sorted(glob.glob(frame_pattern.replace("%04d.jpg", "*.jpg")))
         timeline_frames = []
         for i, frame_path in enumerate(frame_files):
             timestamp = i / fps if fps > 0 else 0
             frame_size = os.path.getsize(frame_path)
             motion_level = "low" if frame_size < 30000 else ("high" if frame_size > 150000 else "medium")
-            timeline_frames.append({
-                "index": i,
-                "path": frame_path,
-                "bytes": frame_size,
-                "timestamp_seconds": timestamp,
-                "motion_level": motion_level,
-                "frame_hash": _generate_simple_hash(frame_path + str(i)),
-            })
+            timeline_frames.append(
+                {
+                    "index": i,
+                    "path": frame_path,
+                    "bytes": frame_size,
+                    "timestamp_seconds": timestamp,
+                    "motion_level": motion_level,
+                    "frame_hash": _generate_simple_hash(frame_path + str(i)),
+                }
+            )
 
         scene_changes = _detect_scene_changes(timeline_frames)
 
+        transcript = ""
+        transcript_segments: list[dict[str, Any]] = []
+        transcript_status = "disabled" if options.get("no_transcribe") else "not_requested"
+        transcript_reason = "transcription disabled by user" if options.get("no_transcribe") else None
+        audio_path = None
+
+        if has_audio and not options.get("no_transcribe"):
+            _emit_progress(on_progress, "transcribe", "Preparing local audio transcription")
+            audio_path = _extract_audio_for_transcription(normalized, temp_dir)
+            if audio_path:
+                _emit_progress(on_progress, "transcribe", "Running Whisper transcription")
+                transcription = _transcribe_audio(audio_path, options.get("whisper_model", "tiny"))
+                transcript = transcription["text"]
+                transcript_segments = transcription["segments"]
+                transcript_status = transcription["status"]
+                transcript_reason = transcription["reason"]
+            else:
+                transcript_status = "skipped"
+                transcript_reason = "ffmpeg could not extract audio for transcription"
+        elif not has_audio:
+            transcript_status = "skipped"
+            transcript_reason = "video has no audio stream"
+
         audio_data = {
             "has_audio": has_audio,
-            "audio_path": None,
-            "transcript": "",
-            "transcript_segments": [],
+            "audio_path": audio_path,
+            "transcript": transcript,
+            "transcript_segments": transcript_segments,
             "audio_codec": audio_codec,
             "silence_ratio": None,
-            "mood": _analyze_audio_mood({"codec": audio_codec, "silenceRatio": 0, "transcript": {"text": ""}}),
+            "transcription_status": transcript_status,
+            "transcription_reason": transcript_reason,
+            "mood": _analyze_audio_mood({"codec": audio_codec, "silenceRatio": 0, "transcript": {"text": transcript}}),
         }
 
         return {
@@ -291,8 +367,8 @@ def ingest_video(video_target: str) -> dict[str, Any]:
             "output_dir": temp_dir,
         }
     except subprocess.CalledProcessError as error:
-        print(f"❌ Step 1 failed: {error.stderr}", flush=True)
+        print(f"Step 1 failed: {error.stderr}", flush=True)
         raise RuntimeError(f"ffmpeg failed: {error.stderr}") from error
     except Exception as error:
-        print(f"❌ Step 1 failed: {error}", flush=True)
+        print(f"Step 1 failed: {error}", flush=True)
         raise

@@ -20,6 +20,8 @@ Video-to-prompt pipeline that deconstructs any video into a universal blueprint,
 - `vidrev-web` — same as `python -m web` (after editable install)
 - Paths auto-convert: Windows `E:\vidrev\test.mp4` → WSL `/mnt/e/vidrev/test.mp4`
 
+- `python scripts/verify_output.py <video_name>` - verify latest saved JSON/TXT output without rerunning pipeline
+
 ## Architecture
 
 ```text
@@ -86,6 +88,7 @@ Options:
   --sample-mode        Sampling: full, first-n, highlights (requires ffmpeg)
   --video-type         Override auto-detected video type
   --no-cache           Disable blueprint caching
+  --no-transcribe      Skip local Whisper transcription
   --wsl                Force WSL path conversion
   --win                Force Windows path mode
   --gemini-model       Gemini model: gemini-2.5-flash, gemini-2.5-pro, gemini-2.0-flash
