@@ -5,9 +5,12 @@ import asyncio
 import json
 import sys
 
+import os
+
 from src.batch import run_batch_pipeline
 from src.pipeline import run_pipeline
 from utils.cli import detect_environment, parse_cli_args, print_help
+from utils.compare import compare_outputs, print_comparison
 from utils.error_codes import VRError, VRErrorCode, explain_error, print_error_report
 from utils.interactive import start_interactive
 from utils.logger import error, info, set_log_level
@@ -83,6 +86,22 @@ def main() -> None:
                 print("\n" + "═" * 60, flush=True)
                 print("  DRY RUN — No files saved", flush=True)
                 print("═" * 60 + "\n", flush=True)
+
+        if options.get("compare_video"):
+            info("main", f"Compare mode: comparing with {options['compare_video']}")
+            compare_opts = dict(options)
+            compare_opts["video_path"] = compare_opts["compare_video"]
+            compare_output = asyncio.run(run_pipeline(compare_opts))
+            result = compare_outputs(output, compare_output)
+            if options.get("log_level") != "quiet":
+                print_comparison(result)
+            output_dir = options.get("output_dir") or "output_blueprints"
+            os.makedirs(output_dir, exist_ok=True)
+            comp_path = os.path.join(output_dir, f"compare_{options.get('video_path', 'unknown')}.json")
+            with open(comp_path, "w", encoding="utf-8") as f:
+                json.dump(result, f, indent=2)
+            info("main", f"Comparison saved to {comp_path}")
+            sys.exit(0)
 
         if options.get("interactive") and not options.get("batch"):
             if options.get("log_level") != "quiet":

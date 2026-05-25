@@ -74,6 +74,7 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
         "parallel": 4,
         "interactive": False,
         "profile": None,
+        "compare_video": None,
     }
 
     # Pre-scan for --profile so profile defaults are set before explicit args override them
@@ -206,6 +207,11 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
             i += 1
             # Already applied in pre-scan; just consume the value
 
+        elif arg == "--compare":
+            i += 1
+            if i < len(args) and args[i]:
+                result["compare_video"] = args[i]
+
         else:
             if not arg.startswith("-") and result["video_path"] is None:
                 result["video_path"] = arg
@@ -261,6 +267,7 @@ Options:
                          quality: full video, Pro model (best quality)
                          cheap:  10s highlights, no cache (lowest cost)
                          Explicit flags override profile settings.
+  --compare <video>    Run pipeline on primary video and compare against this second video
 
 Troubleshooting:
   --explain-error <VR-CODE>   Print detailed troubleshooting steps for an error
@@ -273,6 +280,7 @@ Examples:
   python -m src.main /mnt/e/vidrev/test1.mp4 --format txt --verbose
   python -m src.main https://example.com/video.mp4 --dry-run
   python -m src.main --explain-error VR-101
+  python -m src.main /mnt/e/vidrev/test1.mp4 --compare /mnt/e/vidrev/test_drone.mp4
 """
     print(help_text)
 
