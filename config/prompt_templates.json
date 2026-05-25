@@ -1,5 +1,5 @@
 {
-  "template_version": "1.0",
+  "template_version": "1.1",
   "runway_gen4_5": {
     "label": "Runway Gen-4.5",
     "template": "[Camera: {camera} | Framing: {framing}] {style} style video showing {action}. Set in {environment}. {lighting} Duration: {duration}s. {negative}",
@@ -116,7 +116,37 @@
       }
     }
   },
-  "luma_dream_machine": {
+   "luma_ray2": {
+    "label": "Luma Ray 2",
+    "template": "Cinematic {duration}s clip. {action} in {environment}. Camera: {camera}, {framing}. Style: {style}. Lighting: {lighting}. Color: {color_grading}. {negative}",
+    "supports_negative": false,
+    "max_duration": 10,
+    "aspect_ratio_support": ["16:9", "9:16", "1:1"],
+    "negative_placeholder": "",
+    "notes": "Ray 2 excels at camera movement, natural motion physics, and cinematic realism. Structured prompting works best: subject → action → scene → style → camera. Supports audio, keyframes, and 30s extension.",
+    "enhancement_rules": {
+      "preferred_order": ["duration", "action", "environment", "camera", "framing", "style", "lighting", "color_grading"],
+      "keyword_injection": {
+        "camera_keywords": ["dolly zoom", "crane shot", "tracking shot", "orbit", "push-in", "pull-out", "pan", "tilt", "handheld", "steadicam", "gimbal", "fly-through"],
+        "physics_keywords": ["natural motion physics", "realistic momentum", "fluid dynamics", "weighted movement", "organic motion", "physically accurate"],
+        "cinematic_keywords": ["cinematic", "film look", "anamorphic", "prime lens", "shallow depth of field", "rack focus", "cinematic framing"],
+        "lighting_keywords": ["golden hour glow", "volumetric scattering", "soft diffused light", "hard directional", "rim light", "practical lighting", "motivated lighting"],
+        "atmosphere_keywords": ["immersive atmosphere", "spatial depth", "environmental storytelling", "moody", "ethereal", "dramatic"]
+      },
+      "prompt_guidelines": {
+        "max_length": 350,
+        "sentence_style": "structured",
+        "emphasize_camera_movement": true,
+        "emphasize_motion": true,
+        "emphasize_realism": true,
+        "avoid_adjectives": ["stunning", "breathtaking", "amazing", "incredible", "gorgeous"],
+        "avoid_phrases": ["we see", "the viewer"],
+        "prefer_specifics": ["dolly zoom into", "crane shot revealing", "tracking alongside", "orbit around", "smooth gimbal movement", "natural physics", "volumetric light"],
+        "composition_tips": "Ray 2 responds strongly to explicit camera movement commands. Lead with the physical motion of the camera. Structured prompts (action → scene → camera → style) yield best results."
+      }
+    }
+  },
+   "luma_dream_machine": {
     "label": "Luma Dream Machine",
     "template": "{style} video, {duration}s. {action}. {environment}. Shot with {camera}, {framing}. {lighting}. {color_grading}. {negative}",
     "supports_negative": false,
@@ -173,7 +203,37 @@
       }
     }
   },
-  "haiper_2": {
+   "pika_3_0": {
+    "label": "Pika 3.0",
+    "template": "{style}: {action} in {environment}. Shot with {camera}, {framing}. {lighting}. {negative}",
+    "supports_negative": true,
+    "max_duration": 10,
+    "aspect_ratio_support": ["16:9", "9:16", "1:1"],
+    "negative_placeholder": "--no {negative}",
+    "notes": "Pika 3.0 excels at speed and creative effects. Supports Pikaframes (keyframes), Pikaffects (physics effects), Scene Director (multi-shot), and Sound Design (SFX). Uses --no flag for negatives. Fast generation for short clips.",
+    "enhancement_rules": {
+      "preferred_order": ["style", "action", "environment", "camera", "framing", "lighting"],
+      "keyword_injection": {
+        "style_keywords": ["animated", "stylized", "illustrated", "watercolor", "oil painting", "3D rendered", "pixel art", "claymation", "cel-shaded", "comic book"],
+        "effect_keywords": ["Pikaffect explode", "Pikaffect melt", "Pikaffect inflate", "Pikaffect squish", "Pikaffect crush", "smooth morphing", "dynamic transition"],
+        "camera_keywords": ["dolly shot", "orbit", "push-in", "pull-out", "pan", "tilt", "zoom", "handheld", "steady shot", "bullet time", "dash cam"],
+        "motion_keywords": ["smooth motion", "fluid animation", "dynamic movement", "natural physics", "weighted movement"],
+        "atmosphere_keywords": ["playful", "whimsical", "dreamy", "surreal", "fantasy", "moody", "dramatic", "ethereal"]
+      },
+      "prompt_guidelines": {
+        "max_length": 300,
+        "sentence_style": "stylized",
+        "emphasize_style": true,
+        "emphasize_color": true,
+        "emphasize_motion": true,
+        "avoid_adjectives": ["stunning", "breathtaking", "amazing", "gorgeous"],
+        "avoid_phrases": ["a video of", "we see"],
+        "prefer_specifics": ["animated style", "smooth camera orbit", "playful atmosphere", "dynamic motion", "cinematic lighting", "vibrant colors"],
+        "composition_tips": "Pika 3.0 excels at stylized content and quick iterations. Lead with the art style. For realistic results, use 'cinematic photorealistic' style tag. Scene Director works best for multi-shot storyboards with consistent characters."
+      }
+    }
+  },
+   "haiper_2": {
     "label": "Haiper 2.0",
     "template": "{style} footage lasting {duration}s. {action} within {environment}. Camera uses {camera} with {framing}. {lighting}. {color_grading}. {negative}",
     "supports_negative": false,

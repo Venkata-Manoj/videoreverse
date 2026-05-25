@@ -121,3 +121,61 @@ def run_tests():
                     expect("camera" in phrase).to_be(False)
 
     describe("Templates", lambda: it("no model has camera-related avoid_phrases that contradict {camera} placeholder", _test_no_model_has_camera_contradiction))
+
+    def _test_new_models_present():
+        prompts = compile_prompts(MOCK_BLUEPRINT, MOCK_METADATA)
+        expect("luma_ray2" in prompts).to_be(True)
+        expect("pika_3_0" in prompts).to_be(True)
+    describe("compilePrompts", lambda: it("luma_ray2 and pika_3_0 are present in compiled output", _test_new_models_present))
+
+    def _test_new_model_labels():
+        prompts = compile_prompts(MOCK_BLUEPRINT, MOCK_METADATA)
+        expect(prompts["luma_ray2"]["label"]).to_equal("Luma Ray 2")
+        expect(prompts["pika_3_0"]["label"]).to_equal("Pika 3.0")
+    describe("compilePrompts", lambda: it("new models have correct labels", _test_new_model_labels))
+
+    def _test_new_model_duration():
+        prompts = compile_prompts(MOCK_BLUEPRINT, MOCK_METADATA)
+        expect(prompts["luma_ray2"]["max_duration"]).to_be(10)
+        expect(prompts["pika_3_0"]["max_duration"]).to_be(10)
+    describe("compilePrompts", lambda: it("new models have correct max_duration", _test_new_model_duration))
+
+    def _test_new_model_placeholders():
+        with open(get_config_path("prompt_templates.json"), encoding="utf-8") as f:
+            templates = json.load(f)
+        core = ["{camera}", "{framing}", "{style}", "{action}", "{environment}", "{lighting}"]
+        optional = ["{duration}", "{color_grading}", "{negative}"]
+        for key in ["luma_ray2", "pika_3_0"]:
+            tpl = templates[key]["template"]
+            for ph in core:
+                expect(ph in tpl).to_be(True)
+            has_any_optional = any(ph in tpl for ph in optional)
+            expect(has_any_optional).to_be(True)
+    describe("Templates", lambda: it("new models contain all core placeholders + at least one optional", _test_new_model_placeholders))
+
+    def _test_new_model_no_empty_keyword_lists():
+        with open(get_config_path("prompt_templates.json"), encoding="utf-8") as f:
+            templates = json.load(f)
+        for key in ["luma_ray2", "pika_3_0"]:
+            keywords = templates[key].get("enhancement_rules", {}).get("keyword_injection", {})
+            for category, words in keywords.items():
+                if isinstance(words, list):
+                    expect(len(words)).to_be_greater_than(0)
+                    for w in words:
+                        expect(w != "").to_be(True)
+    describe("Templates", lambda: it("new models have no empty keyword lists", _test_new_model_no_empty_keyword_lists))
+
+    def _test_new_models_have_all_required_fields():
+        with open(get_config_path("prompt_templates.json"), encoding="utf-8") as f:
+            templates = json.load(f)
+        required_fields = ["label", "template", "supports_negative", "max_duration", "aspect_ratio_support", "negative_placeholder", "notes", "enhancement_rules"]
+        for key in ["luma_ray2", "pika_3_0"]:
+            for field in required_fields:
+                expect(field in templates[key]).to_be(True)
+    describe("Templates", lambda: it("new models have all required fields", _test_new_models_have_all_required_fields))
+
+    def _test_new_models_in_cli_list():
+        from utils.cli import SUPPORTED_MODELS
+        expect("luma_ray2" in SUPPORTED_MODELS).to_be(True)
+        expect("pika_3_0" in SUPPORTED_MODELS).to_be(True)
+    describe("Templates", lambda: it("new models are in SUPPORTED_MODELS", _test_new_models_in_cli_list))
