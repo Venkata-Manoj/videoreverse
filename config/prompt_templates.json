@@ -1,4 +1,5 @@
 {
+  "template_version": "1.0",
   "runway_gen4_5": {
     "label": "Runway Gen-4.5",
     "template": "[Camera: {camera} | Framing: {framing}] {style} style video showing {action}. Set in {environment}. {lighting} Duration: {duration}s. {negative}",

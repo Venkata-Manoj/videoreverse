@@ -9,7 +9,7 @@ from typing import Any
 
 ProgressCallback = Callable[[str, dict[str, Any]], None]
 
-from src.compile import compile_prompts
+from src.compile import compile_prompts, get_template_version
 from src.export import format_text
 from src.ingest import ingest_video
 from src.path_resolver import normalize_for_env
@@ -21,6 +21,7 @@ from utils.logger import debug, error, info, log_pipeline_step, set_log_level, w
 from utils.metrics import PipelineMetrics
 from utils.retry import RETRY_CONFIG, _is_retriable_error, extract_status_code, with_retry
 from utils.validation import sanitize_blueprint, validate_blueprint
+from utils.versioning import save_history
 from utils.video_type import detect_video_type, get_video_type_label
 
 
@@ -312,6 +313,7 @@ async def run_pipeline(
                 "video_type": video_type,
                 "fallback_active": fallback.is_active(),
                 "fallback_reason": fallback.get_reason(),
+                "template_version": get_template_version(),
             },
         }
 
@@ -358,6 +360,12 @@ async def run_pipeline(
             with open(text_file, "w", encoding="utf-8") as f:
                 f.write(format_text(results["output"]))
             print(f"📄 Text: {text_file}", flush=True)
+
+        try:
+            version = save_history(results["output"], options.get("video_path", ""), output_dir)
+            print(f"📜 History: v{version}", flush=True)
+        except Exception:
+            pass
 
         metrics.write()
 

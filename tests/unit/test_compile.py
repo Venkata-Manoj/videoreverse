@@ -112,6 +112,8 @@ def run_tests():
         with open(get_config_path("prompt_templates.json"), encoding="utf-8") as f:
             templates = json.load(f)
         for model_key, model_data in templates.items():
+            if not isinstance(model_data, dict):
+                continue
             template = model_data.get("template", "")
             if "{camera}" in template:
                 avoid = model_data.get("enhancement_rules", {}).get("prompt_guidelines", {}).get("avoid_phrases", [])

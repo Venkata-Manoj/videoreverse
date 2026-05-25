@@ -14,6 +14,7 @@ from utils.compare import compare_outputs, print_comparison
 from utils.error_codes import VRError, VRErrorCode, explain_error, print_error_report
 from utils.interactive import start_interactive
 from utils.logger import error, info, set_log_level
+from utils.versioning import list_versions, load_history, save_history
 
 
 def main() -> None:
@@ -78,6 +79,51 @@ def main() -> None:
                     max_parallel=options.get("parallel", 4),
                 )
             )
+            sys.exit(0)
+
+        video_path = options.get("video_path", "")
+
+        if options.get("list_versions"):
+            output_dir = options.get("output_dir") or "output_blueprints"
+            versions = list_versions(video_path, output_dir)
+            if not versions:
+                print(f"No history versions found for {video_path}", flush=True)
+            else:
+                print(f"\n  History versions for {video_path}:\n", flush=True)
+                for v in versions:
+                    print(f"  v{v['version']}  |  template: {v['template_version']}  |  {v['saved_at']}  |  shots: {v['shots']}  |  models: {len(v['models'])}", flush=True)
+                print(flush=True)
+            sys.exit(0)
+
+        if options.get("rollback_version"):
+            output_dir = options.get("output_dir") or "output_blueprints"
+            version = options["rollback_version"]
+            info("main", f"Rolling back to version {version}")
+            entry = load_history(video_path, output_dir, version)
+            if entry is None:
+                print(f"Version v{version} not found for {video_path}", file=sys.stderr, flush=True)
+                sys.exit(1)
+            blueprint = entry.get("blueprint")
+            if not blueprint:
+                print(f"Version v{version} has no blueprint data", file=sys.stderr, flush=True)
+                sys.exit(1)
+            from src.compile import compile_prompts
+            prompts = compile_prompts(blueprint, entry.get("video_metadata"))
+            output = {
+                "video_metadata": entry.get("video_metadata", {}),
+                "blueprint": blueprint,
+                "prompts": prompts,
+                "_meta": {
+                    "rollback_from_version": version,
+                    "template_version": "1.0",
+                    "history_saved_at": None,
+                },
+            }
+            new_v = save_history(output, video_path, output_dir)
+            info("main", f"Rollback complete — saved as v{new_v}")
+            print(json.dumps(output, indent=2), flush=True)
+            sys.exit(0)
+
         else:
             info("main", f"Video path: {options['video_path']}")
             output = asyncio.run(run_pipeline(options))

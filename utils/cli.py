@@ -75,6 +75,8 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
         "interactive": False,
         "profile": None,
         "compare_video": None,
+        "rollback_version": None,
+        "list_versions": None,
     }
 
     # Pre-scan for --profile so profile defaults are set before explicit args override them
@@ -212,6 +214,18 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
             if i < len(args) and args[i]:
                 result["compare_video"] = args[i]
 
+        elif arg == "--rollback":
+            i += 1
+            if i < len(args) and args[i]:
+                try:
+                    result["rollback_version"] = int(args[i])
+                except ValueError:
+                    pass
+
+        elif arg == "--list-versions":
+            # The video path will be consumed by the non-flag fallback
+            result["list_versions"] = True
+
         else:
             if not arg.startswith("-") and result["video_path"] is None:
                 result["video_path"] = arg
@@ -268,6 +282,8 @@ Options:
                          cheap:  10s highlights, no cache (lowest cost)
                          Explicit flags override profile settings.
   --compare <video>    Run pipeline on primary video and compare against this second video
+  --rollback <N>       Re-compile prompts from history version N (uses current templates)
+  --list-versions      List all saved history versions for the given video
 
 Troubleshooting:
   --explain-error <VR-CODE>   Print detailed troubleshooting steps for an error
@@ -281,6 +297,8 @@ Examples:
   python -m src.main https://example.com/video.mp4 --dry-run
   python -m src.main --explain-error VR-101
   python -m src.main /mnt/e/vidrev/test1.mp4 --compare /mnt/e/vidrev/test_drone.mp4
+  python -m src.main /mnt/e/vidrev/test1.mp4 --list-versions
+  python -m src.main /mnt/e/vidrev/test1.mp4 --rollback 2
 """
     print(help_text)
 

@@ -12,7 +12,17 @@ def _load_templates() -> dict[str, Any]:
     if not os.path.exists(tpl_path):
         raise FileNotFoundError(f"prompt_templates.json not found at {tpl_path}")
     with open(tpl_path, encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+    return {k: v for k, v in data.items() if isinstance(v, dict)}
+
+
+def get_template_version() -> str:
+    tpl_path = get_config_path("prompt_templates.json")
+    if not os.path.exists(tpl_path):
+        return "unknown"
+    with open(tpl_path, encoding="utf-8") as f:
+        data = json.load(f)
+    return str(data.get("template_version", "unknown"))
 
 
 def _resolve_aspect_ratio(width: int | None, height: int | None) -> str:
