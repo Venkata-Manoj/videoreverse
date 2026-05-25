@@ -63,6 +63,16 @@ web/
 
 **Flow:** Video → [sampler] → ffmpeg (metadata + audio) → Gemini File API (multimodal analysis) → template compiler → dual output
 
+**Web UI Features:**
+
+- **Job History** — Previous jobs saved to localStorage, re-run with same settings
+- **Comparison Tool** — Side-by-side blueprint/prompt diff of any two jobs
+- **Template Editor** — In-browser template customization with save back to disk
+- **Monitoring Dashboard** — API usage stats, timing metrics, error/fallback rates
+- **Configuration Profiles** — Fast/Quality/Cheap presets with custom save/load
+- **Accessibility** — Skip links, ARIA labels, keyboard navigation, focus-visible outlines
+- **Web Worker** — Offloads JSON formatting from main thread
+
 **Universal Schema:** `{ global_aesthetic, chronological_shots[] }` — enforced via `responseSchema`
 
 ## Key Files
@@ -99,9 +109,39 @@ Options:
 ```
 
 **Smart Sampling:** Reduces API cost by 50-90% for long videos.
+
 - `--sample-mode first-n --max-duration 30` → clip first 30s
 - `--sample-mode highlights --max-duration 30` → extract 30s of highest-motion segments
 - Cost estimate: ~$0.001/second for Gemini 2.5 Flash
+
+## Error Codes
+
+All errors use standardized **VR-XXX** codes. Use `--explain-error <CODE>` for troubleshooting.
+
+| Code | Description |
+|------|-------------|
+| VR-001 | No video path provided |
+| VR-002 | Unsupported model |
+| VR-003 | Invalid CLI argument |
+| VR-004 | File not found |
+| VR-005 | Path resolution failed |
+| VR-101 | FFmpeg not found |
+| VR-102 | FFprobe metadata failed |
+| VR-103 | Frame extraction failed |
+| VR-104 | Audio extraction failed |
+| VR-105 | Whisper transcription failed |
+| VR-106 | Smart sampling failed |
+| VR-107 | Video corrupt |
+| VR-201 | Gemini API key missing |
+| VR-202 | Gemini File upload failed |
+| VR-203 | Gemini synthesis failed |
+| VR-204 | Gemini rate limited |
+| VR-205 | Gemini service down |
+| VR-301 | Prompt compilation failed |
+| VR-302 | Blueprint validation failed |
+| VR-303 | Fallback activated |
+| VR-402 | Output write failed |
+| VR-499 | Internal error |
 
 ## Error Handling
 
@@ -109,6 +149,7 @@ Options:
 2. **Fallback mode** — Text-only prompts from metadata if Gemini fails
 3. **Validation** — Sanitize malformed JSON automatically
 4. **Logging** — Errors persisted to `output_blueprints/errors.log`
+5. **Error Codes** — All errors have standardized VR-XXX codes with troubleshooting steps
 
 ## Gotchas
 
@@ -126,6 +167,7 @@ Options:
 2. That's it. `compile.py` reads the config dynamically.
 
 **Enhancement Rules Structure:**
+
 ```json
 {
   "enhancement_rules": {
@@ -168,6 +210,8 @@ Keep diverse test videos:
 - always ask user to commit this feature/something and get it tested before moving forward
 - make the commit message very clear and concise
 - when you are done with all the tasks user mentioned then ask user to commit the changes and move forward
+- always check TODO.md for any pending tasks and remain user about it if there are any.
+- always test the code and get it tested before moving forward.
 
 ## Update/Enhance
 

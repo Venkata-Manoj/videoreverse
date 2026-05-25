@@ -325,7 +325,11 @@ function showResults(output, meta = {}) {
     promptsPanel.appendChild(block);
   });
 
-  document.getElementById("tab-raw").textContent = JSON.stringify(output, null, 2);
+  if (appWorker) {
+    formatWithWorker(output);
+  } else {
+    document.getElementById("tab-raw").textContent = JSON.stringify(output, null, 2);
+  }
 
   if (meta.files) {
     log(`Saved: ${Object.values(meta.files).join(", ")}`);
@@ -511,7 +515,532 @@ document.querySelectorAll(".tab").forEach((button) => {
   });
 });
 
+/* =========================================
+   Web Worker
+   ========================================= */
+
+let appWorker = null;
+
+function initWorker() {
+  try {
+    appWorker = new Worker("/static/app.worker.js");
+    appWorker.onerror = () => { appWorker = null; };
+    appWorker.onmessage = (e) => {
+      const { type, data } = e.data;
+      if (type === "formattedJson" && document.getElementById("tab-raw")) {
+        document.getElementById("tab-raw").textContent = data;
+      }
+    };
+  } catch {
+    appWorker = null;
+  }
+}
+
+function formatWithWorker(json) {
+  if (appWorker) {
+    appWorker.postMessage({ type: "formatJson", data: json });
+  }
+}
+
+initWorker();
+
 loadConfig().catch(() => {
   envBadge.textContent = "Cannot reach server";
   envBadge.className = "badge warn";
+});
+
+/* =========================================
+   Job History (localStorage)
+   ========================================= */
+
+const HISTORY_KEY = "vidrev_job_history";
+const MAX_HISTORY = 50;
+
+function getHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveToHistory(entry) {
+  const history = getHistory();
+  entry.timestamp = new Date().toISOString();
+  history.unshift(entry);
+  if (history.length > MAX_HISTORY) history.length = MAX_HISTORY;
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  renderHistory();
+}
+
+function addJobToHistory(jobId, filename, options, output, files) {
+  const entry = {
+    jobId,
+    filename,
+    options: { ...options },
+    output: output || null,
+    files: files || {},
+    shots: output?.blueprint?.chronological_shots?.length || 0,
+    models: output?.prompts ? Object.keys(output.prompts).length : 0,
+    duration_s: output?.video_metadata?.duration_seconds || null,
+    fallback: output?._meta?.fallback_active || false,
+  };
+  saveToHistory(entry);
+}
+
+function renderHistory() {
+  const history = getHistory();
+  const listEl = document.getElementById("history-list");
+  const countEl = document.getElementById("history-count");
+  if (!listEl) return;
+  if (countEl) countEl.textContent = `${history.length} job${history.length !== 1 ? "s" : ""}`;
+
+  if (history.length === 0) {
+    listEl.innerHTML = '<p class="history-empty">No previous jobs. Run an analysis and it will appear here.</p>';
+    return;
+  }
+
+  listEl.innerHTML = history
+    .map((entry, idx) => {
+      const time = new Date(entry.timestamp).toLocaleString();
+      const meta = [
+        time,
+        entry.shots ? `${entry.shots} shots` : null,
+        entry.models ? `${entry.models} models` : null,
+        entry.fallback ? "fallback" : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      return `
+      <div class="history-item" role="listitem" data-index="${idx}" tabindex="0">
+        <div class="history-item-info">
+          <span class="history-item-filename">${escapeHtml(entry.filename)}</span>
+          <span class="history-item-meta">${escapeHtml(meta)}</span>
+        </div>
+        <div class="history-item-actions">
+          <button class="btn small secondary history-rerun" data-index="${idx}" type="button" title="Re-run with same settings">⟳</button>
+          <button class="btn small secondary history-compare" data-index="${idx}" type="button" title="Select for comparison">⇄</button>
+        </div>
+      </div>`;
+    })
+    .join("");
+
+  listEl.querySelectorAll(".history-rerun").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.index, 10);
+      rerunHistoryJob(idx);
+    });
+  });
+
+  listEl.querySelectorAll(".history-compare").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.index, 10);
+      toggleCompareSelection(idx);
+    });
+  });
+}
+
+function rerunHistoryJob(index) {
+  const history = getHistory();
+  const entry = history[index];
+  if (!entry) return;
+
+  const opts = entry.options || {};
+  if (opts.sample_mode) sampleMode.value = opts.sample_mode;
+  if (opts.gemini_model) geminiModel.value = opts.gemini_model;
+  if (opts.max_duration) document.getElementById("max-duration").value = opts.max_duration;
+  if (opts.no_cache) document.getElementById("no-cache").checked = true;
+  if (opts.no_transcribe) document.getElementById("no-transcribe").checked = true;
+
+  selectedFiles = [];
+  currentMode = "single";
+  fileNameEl.textContent = entry.filename + " (file not loaded — re-upload required)";
+  runBtn.disabled = true;
+  log(`Settings loaded from history: ${entry.filename}`);
+}
+
+document.getElementById("clear-history-btn")?.addEventListener("click", () => {
+  if (confirm("Clear all job history? This cannot be undone.")) {
+    localStorage.removeItem(HISTORY_KEY);
+    renderHistory();
+    log("Job history cleared");
+  }
+});
+
+/* =========================================
+   Comparison Tool
+   ========================================= */
+
+let compareSelection = [];
+
+function toggleCompareSelection(index) {
+  const history = getHistory();
+  if (index < 0 || index >= history.length) return;
+
+  const itemEl = document.querySelector(`.history-item[data-index="${index}"]`);
+  if (!itemEl) return;
+
+  if (compareSelection.includes(index)) {
+    compareSelection = compareSelection.filter((i) => i !== index);
+    itemEl.classList.remove("selected");
+  } else {
+    if (compareSelection.length >= 2) {
+      const oldIdx = compareSelection.shift();
+      const oldEl = document.querySelector(`.history-item[data-index="${oldIdx}"]`);
+      if (oldEl) oldEl.classList.remove("selected");
+    }
+    compareSelection.push(index);
+    itemEl.classList.add("selected");
+  }
+
+  if (compareSelection.length === 2) {
+    openComparison(compareSelection[0], compareSelection[1]);
+  }
+}
+
+function openComparison(leftIdx, rightIdx) {
+  const history = getHistory();
+  const left = history[leftIdx];
+  const right = history[rightIdx];
+  if (!left || !right) return;
+
+  const modal = document.getElementById("compare-modal");
+  const leftSelect = document.getElementById("compare-left-select");
+  const rightSelect = document.getElementById("compare-right-select");
+
+  function populateSelect(select, history, selectedIdx) {
+    select.innerHTML = history
+      .map((h, i) => `<option value="${i}" ${i === selectedIdx ? "selected" : ""}>${escapeHtml(h.filename)}</option>`)
+      .join("");
+  }
+
+  populateSelect(leftSelect, history, leftIdx);
+  populateSelect(rightSelect, history, rightIdx);
+
+  modal.classList.remove("hidden");
+  renderComparison();
+}
+
+function renderComparison() {
+  const leftIdx = parseInt(document.getElementById("compare-left-select").value, 10);
+  const rightIdx = parseInt(document.getElementById("compare-right-select").value, 10);
+  const history = getHistory();
+  const left = history[leftIdx];
+  const right = history[rightIdx];
+  if (!left || !right) return;
+
+  const outputDiv = document.getElementById("compare-output");
+  outputDiv.classList.remove("hidden");
+
+  function buildBlueprintColumn(data) {
+    if (!data?.blueprint) return "<p>No blueprint data</p>";
+    const b = data.blueprint;
+    const aesthetic = b.global_aesthetic || {};
+    const shots = b.chronological_shots || [];
+    return `
+      <p><strong>Style:</strong> ${aesthetic.art_style || "-"}</p>
+      <p><strong>Lighting:</strong> ${aesthetic.lighting_setup || "-"}</p>
+      <p><strong>Color:</strong> ${aesthetic.color_grading || "-"}</p>
+      <p><strong>Shots:</strong> ${shots.length}</p>
+      ${shots
+        .map(
+          (s, i) => `
+        <div style="margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--border)">
+          <strong>Shot ${i + 1}</strong> (${s.duration_seconds ?? "?"}s)<br>
+          Camera: ${s.camera_direction || "-"}<br>
+          Action: ${s.action_and_motion || "-"}<br>
+          Setting: ${s.environment_context || "-"}
+        </div>`
+        )
+        .join("")}
+    `;
+  }
+
+  function buildPromptsColumn(data) {
+    if (!data?.prompts) return "<p>No prompt data</p>";
+    const prompts = data.prompts;
+    return Object.values(prompts)
+      .map((model) => {
+        const lines = (model.shots || []).map((shot) => shot.prompt).join("\n\n");
+        return `<h4 style="margin:0.5rem 0 0.25rem">${escapeHtml(model.label)}</h4><pre>${escapeHtml(lines || "—")}</pre>`;
+      })
+      .join("");
+  }
+
+  document.getElementById("compare-blueprint").innerHTML = `
+    <div class="compare-column">
+      <h4>${escapeHtml(left.filename)}</h4>
+      ${buildBlueprintColumn(left.output || {})}
+    </div>
+    <div class="compare-column">
+      <h4>${escapeHtml(right.filename)}</h4>
+      ${buildBlueprintColumn(right.output || {})}
+    </div>`;
+
+  document.getElementById("compare-prompts").innerHTML = `
+    <div class="compare-column">
+      <h4>${escapeHtml(left.filename)}</h4>
+      ${buildPromptsColumn(left.output || {})}
+    </div>
+    <div class="compare-column">
+      <h4>${escapeHtml(right.filename)}</h4>
+      ${buildPromptsColumn(right.output || {})}
+    </div>`;
+}
+
+document.getElementById("compare-left-select")?.addEventListener("change", renderComparison);
+document.getElementById("compare-right-select")?.addEventListener("change", renderComparison);
+document.getElementById("compare-btn")?.addEventListener("click", renderComparison);
+
+document.querySelectorAll(".compare-close").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.getElementById("compare-modal").classList.add("hidden");
+    document.querySelectorAll(".history-item.selected").forEach((el) => el.classList.remove("selected"));
+    compareSelection = [];
+  });
+});
+
+document.querySelectorAll("[data-compare-tab]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("[data-compare-tab]").forEach((t) => t.classList.remove("active"));
+    btn.classList.add("active");
+    const target = btn.dataset.compareTab;
+    document.getElementById("compare-blueprint").classList.toggle("hidden", target !== "blueprint");
+    document.getElementById("compare-prompts").classList.toggle("hidden", target !== "prompts");
+  });
+});
+
+/* =========================================
+   Template Editor
+   ========================================= */
+
+let templateCache = {};
+
+async function loadTemplateEditor() {
+  try {
+    const res = await fetch("/api/templates");
+    const data = await res.json();
+    templateCache = data.templates || {};
+    const select = document.getElementById("template-model-select");
+    select.innerHTML = (data.models || [])
+      .map((m) => `<option value="${m}">${escapeHtml(templateCache[m]?.label || m)}</option>`)
+      .join("");
+    select.value = data.models[0] || "";
+    loadTemplateField();
+  } catch (err) {
+    console.error("Failed to load templates:", err);
+  }
+}
+
+function loadTemplateField() {
+  const modelId = document.getElementById("template-model-select").value;
+  const field = document.getElementById("template-field-select").value;
+  const textarea = document.getElementById("template-editor-textarea");
+  const statusEl = document.getElementById("template-status");
+
+  const model = templateCache[modelId];
+  if (!model) {
+    textarea.value = "// No template data available";
+    textarea.disabled = true;
+    return;
+  }
+
+  textarea.disabled = false;
+  statusEl.textContent = "";
+  statusEl.className = "template-status";
+
+  if (field === "enhancement_rules") {
+    textarea.value = JSON.stringify(model.enhancement_rules || {}, null, 2);
+  } else {
+    textarea.value = model[field] || "";
+  }
+}
+
+document.getElementById("template-model-select")?.addEventListener("change", loadTemplateField);
+document.getElementById("template-field-select")?.addEventListener("change", loadTemplateField);
+
+document.getElementById("template-save-btn")?.addEventListener("click", async () => {
+  const modelId = document.getElementById("template-model-select").value;
+  const field = document.getElementById("template-field-select").value;
+  const textarea = document.getElementById("template-editor-textarea");
+  const statusEl = document.getElementById("template-status");
+
+  let value = textarea.value;
+  if (field === "enhancement_rules") {
+    try {
+      value = JSON.parse(value);
+    } catch {
+      statusEl.textContent = "Invalid JSON for enhancement rules";
+      statusEl.className = "template-status error";
+      return;
+    }
+  }
+
+  try {
+    const body = { [field]: value };
+    const res = await fetch(`/api/templates/${modelId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      statusEl.textContent = err.error || "Save failed";
+      statusEl.className = "template-status error";
+      return;
+    }
+    statusEl.textContent = "Saved successfully";
+    statusEl.className = "template-status saved";
+    templateCache[modelId][field] = value;
+  } catch (err) {
+    statusEl.textContent = `Error: ${err.message}`;
+    statusEl.className = "template-status error";
+  }
+});
+
+document.getElementById("template-reset-btn")?.addEventListener("click", () => {
+  loadTemplateField();
+  document.getElementById("template-status").textContent = "";
+  document.getElementById("template-status").className = "template-status";
+});
+
+/* Open template editor from header or elsewhere */
+document.querySelectorAll("[data-open-template-editor]").forEach((el) => {
+  el.addEventListener("click", () => {
+    document.getElementById("template-modal").classList.remove("hidden");
+    loadTemplateEditor();
+  });
+});
+
+document.querySelectorAll(".template-close").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.getElementById("template-modal").classList.add("hidden");
+  });
+});
+
+/* =========================================
+   Monitoring Dashboard
+   ========================================= */
+
+async function loadMonitoring() {
+  const grid = document.getElementById("monitoring-grid");
+  if (!grid) return;
+
+  try {
+    const res = await fetch("/api/monitoring");
+    const data = await res.json();
+
+    document.getElementById("monitor-total-jobs").textContent = data.total_jobs;
+    document.getElementById("monitor-error-rate").textContent = `${data.error_rate}%`;
+    document.getElementById("monitor-fallback-rate").textContent = `${data.fallback_rate}%`;
+    document.getElementById("monitor-output-files").textContent = data.output_files;
+    document.getElementById("monitor-output-size").textContent = `${data.output_size_mb} MB`;
+    document.getElementById("monitor-active-jobs").textContent = data.hub_jobs;
+
+    const timingDiv = document.getElementById("monitor-timing");
+    const timingGrid = document.getElementById("monitor-timing-grid");
+    const avg = data.average_timing_ms || {};
+
+    if (Object.keys(avg).length > 0) {
+      timingDiv.classList.remove("hidden");
+      timingGrid.innerHTML = Object.entries(avg)
+        .map(([key, val]) => {
+          const label = key.replace("_ms", "").replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
+          return `<div class="monitor-stat"><strong>${val}</strong><span>${escapeHtml(label)}</span></div>`;
+        })
+        .join("");
+    } else {
+      timingDiv.classList.add("hidden");
+    }
+  } catch (err) {
+    console.error("Failed to load monitoring data:", err);
+  }
+}
+
+document.getElementById("refresh-monitor-btn")?.addEventListener("click", loadMonitoring);
+
+/* =========================================
+   Extend pipeline complete to save history
+   ========================================= */
+
+// Save original handleProgress since we need to extend pipeline_complete
+const _origHandleProgress = handleProgress;
+handleProgress = function (data) {
+  _origHandleProgress(data);
+
+  // Save to history on pipeline complete
+  if (data.event === "pipeline_complete" && currentMode === "single" && currentOutput) {
+    addJobToHistory(currentJobId, data.filename || "unknown", {
+      sample_mode: sampleMode.value,
+      gemini_model: geminiModel.value,
+      max_duration: document.getElementById("max-duration").value || "",
+      no_cache: document.getElementById("no-cache").checked,
+      no_transcribe: document.getElementById("no-transcribe").checked,
+    }, currentOutput, data.files || {});
+  }
+};
+
+/* =========================================
+   Handle escape key for modals
+   ========================================= */
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    document.querySelectorAll(".modal-backdrop:not(.hidden)").forEach((modal) => {
+      modal.classList.add("hidden");
+    });
+    document.querySelectorAll(".history-item.selected").forEach((el) => el.classList.remove("selected"));
+    compareSelection = [];
+  }
+});
+
+/* =========================================
+   Close modals on backdrop click
+   ========================================= */
+
+document.querySelectorAll(".modal-backdrop").forEach((modal) => {
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) {
+      modal.classList.add("hidden");
+      document.querySelectorAll(".history-item.selected").forEach((el) => el.classList.remove("selected"));
+      compareSelection = [];
+    }
+  });
+});
+
+/* =========================================
+   Initialization
+   ========================================= */
+
+renderHistory();
+
+// Expose template editor open function globally
+window.openTemplateEditor = function () {
+  document.getElementById("template-modal").classList.remove("hidden");
+  loadTemplateEditor();
+};
+
+// Add template editor button to header (after env badge)
+const headerEl = document.querySelector(".header");
+if (headerEl) {
+  const editBtn = document.createElement("button");
+  editBtn.className = "btn small secondary";
+  editBtn.style.marginTop = "0";
+  editBtn.textContent = "Templates";
+  editBtn.setAttribute("data-open-template-editor", "");
+  editBtn.setAttribute("aria-label", "Open template editor");
+  headerEl.appendChild(editBtn);
+  editBtn.addEventListener("click", () => {
+    document.getElementById("template-modal").classList.remove("hidden");
+    loadTemplateEditor();
+  });
+}
+
+// Load monitoring on expand
+document.getElementById("monitoring-details")?.addEventListener("toggle", () => {
+  if (document.getElementById("monitoring-details").open) {
+    loadMonitoring();
+  }
 });

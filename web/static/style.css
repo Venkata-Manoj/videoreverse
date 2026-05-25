@@ -535,10 +535,411 @@ h1 {
   font-size: 0.8rem;
 }
 
+/* ==============================
+   Job History
+   ============================== */
+
+.history-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.history-count {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.history-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.history-empty {
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 1rem;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  background: var(--bg);
+  margin-bottom: 0.4rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  border: 1px solid transparent;
+}
+
+.history-item:hover {
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.history-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.history-item-filename {
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-item-meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.history-item-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.btn.small {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.78rem;
+  margin-top: 0;
+}
+
+.btn.small.secondary {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn.small.secondary:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.history-item.selected {
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+/* ==============================
+   Modal
+   ============================== */
+
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 560px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.modal-wide {
+  max-width: 800px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+  border-radius: 4px;
+}
+
+.modal-close:hover {
+  color: var(--text);
+  background: var(--bg);
+}
+
+/* ==============================
+   Comparison
+   ============================== */
+
+.compare-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1rem 1.25rem;
+  flex-wrap: wrap;
+}
+
+.compare-controls select {
+  flex: 1;
+  min-width: 140px;
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.compare-vs {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.compare-output {
+  padding: 0 1.25rem 1.25rem;
+  overflow: auto;
+  flex: 1;
+}
+
+.compare-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.compare-panel.hidden {
+  display: none;
+}
+
+.compare-column {
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 0.85rem;
+  font-size: 0.82rem;
+}
+
+.compare-column h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  color: var(--accent);
+}
+
+.compare-column pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  max-height: 300px;
+  overflow: auto;
+}
+
+.compare-diff-added {
+  color: var(--success);
+}
+
+.compare-diff-removed {
+  color: var(--error);
+}
+
+/* ==============================
+   Template Editor
+   ============================== */
+
+.template-controls {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.template-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  flex: 1;
+  min-width: 150px;
+}
+
+.template-controls select {
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.template-editor {
+  flex: 1;
+  padding: 0.75rem 1.25rem;
+  min-height: 250px;
+}
+
+.template-editor textarea {
+  width: 100%;
+  height: 280px;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  resize: vertical;
+  tab-size: 2;
+}
+
+.template-editor textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.template-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.template-status {
+  flex: 1;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.template-status.saved {
+  color: var(--success);
+}
+
+.template-status.error {
+  color: var(--error);
+}
+
+/* ==============================
+   Monitoring Dashboard
+   ============================== */
+
+.monitoring-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.monitor-stat {
+  background: var(--bg);
+  padding: 0.85rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.monitor-stat strong {
+  display: block;
+  font-size: 1.4rem;
+  color: var(--accent);
+}
+
+.monitor-stat span {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 0.2rem;
+}
+
+.monitor-timing {
+  margin: 0.5rem 0 1rem;
+}
+
+.monitor-timing h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+/* ==============================
+   Accessibility Improvements
+   ============================== */
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 1rem;
+  background: var(--accent);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0 0 8px 8px;
+  z-index: 2000;
+  font-size: 0.9rem;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* ==============================
+   Responsive
+   ============================== */
+
 @media (max-width: 640px) {
   .header {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.75rem;
+  }
+
+  .compare-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .compare-controls {
+    flex-direction: column;
+  }
+
+  .compare-controls select {
+    width: 100%;
+  }
+
+  .template-controls {
+    flex-direction: column;
+  }
+
+  .modal {
+    max-height: 90vh;
   }
 }

@@ -7,7 +7,9 @@
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-  <header class="header">
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <header class="header" role="banner">
     <div class="brand">
       <span class="logo" aria-hidden="true">▶</span>
       <div>
@@ -15,10 +17,10 @@
         <p class="tagline">Turn any video into AI-ready prompts — no command line needed</p>
       </div>
     </div>
-    <div id="env-badge" class="badge">Checking setup…</div>
+    <div id="env-badge" class="badge" role="status">Checking setup…</div>
   </header>
 
-  <main class="layout">
+  <main class="layout" id="main-content" role="main">
     <section class="card upload-card">
       <h2>1. Choose your video</h2>
       <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Upload video">
@@ -130,6 +132,97 @@
       <pre id="tab-raw" class="tab-panel hidden raw-json"></pre>
     </section>
   </main>
+
+  <!-- History Panel -->
+  <section class="card history-card" id="history-section">
+    <details id="history-details">
+      <summary><h2>Job History</h2></summary>
+      <div class="history-toolbar">
+        <span id="history-count" class="history-count">0 jobs</span>
+        <button id="clear-history-btn" class="btn small secondary" type="button">Clear All</button>
+      </div>
+      <div id="history-list" class="history-list" role="list" aria-label="Job history">
+        <p class="history-empty">No previous jobs. Run an analysis and it will appear here.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- Comparison Modal -->
+  <div id="compare-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Compare results">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Compare Results</h3>
+        <button type="button" class="modal-close compare-close" aria-label="Close comparison">&times;</button>
+      </div>
+      <div class="compare-controls">
+        <select id="compare-left-select" aria-label="Select first result"></select>
+        <span class="compare-vs">vs</span>
+        <select id="compare-right-select" aria-label="Select second result"></select>
+        <button id="compare-btn" class="btn small primary" type="button">Compare</button>
+      </div>
+      <div id="compare-output" class="compare-output hidden">
+        <div class="tabs">
+          <button type="button" class="tab active" data-compare-tab="blueprint">Blueprint</button>
+          <button type="button" class="tab" data-compare-tab="prompts">Prompts</button>
+        </div>
+        <div id="compare-blueprint" class="compare-panel"></div>
+        <div id="compare-prompts" class="compare-panel hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Template Editor Modal -->
+  <div id="template-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Template editor">
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <h3>Template Editor</h3>
+        <button type="button" class="modal-close template-close" aria-label="Close template editor">&times;</button>
+      </div>
+      <div class="template-controls">
+        <label>
+          Model
+          <select id="template-model-select" aria-label="Select model to edit"></select>
+        </label>
+        <label>
+          Field
+          <select id="template-field-select" aria-label="Select template field">
+            <option value="template">Template</option>
+            <option value="label">Label</option>
+            <option value="notes">Notes</option>
+            <option value="enhancement_rules">Enhancement Rules</option>
+          </select>
+        </label>
+      </div>
+      <div class="template-editor">
+        <textarea id="template-editor-textarea" spellcheck="false" aria-label="Template content editor"></textarea>
+      </div>
+      <div class="template-actions">
+        <span id="template-status" class="template-status"></span>
+        <button id="template-save-btn" class="btn primary" type="button">Save Changes</button>
+        <button id="template-reset-btn" class="btn secondary" type="button">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Monitoring Dashboard -->
+  <section class="card monitoring-card" id="monitoring-section">
+    <details id="monitoring-details">
+      <summary><h2>Monitoring Dashboard</h2></summary>
+      <div class="monitoring-grid" id="monitoring-grid">
+        <div class="monitor-stat"><strong id="monitor-total-jobs">-</strong><span>Total Jobs</span></div>
+        <div class="monitor-stat"><strong id="monitor-error-rate">-</strong><span>Error Rate</span></div>
+        <div class="monitor-stat"><strong id="monitor-fallback-rate">-</strong><span>Fallback Rate</span></div>
+        <div class="monitor-stat"><strong id="monitor-output-files">-</strong><span>Output Files</span></div>
+        <div class="monitor-stat"><strong id="monitor-output-size">-</strong><span>Output Size</span></div>
+        <div class="monitor-stat"><strong id="monitor-active-jobs">-</strong><span>Active Jobs</span></div>
+      </div>
+      <div id="monitor-timing" class="monitor-timing hidden">
+        <h4>Average Timing (ms)</h4>
+        <div class="monitoring-grid" id="monitor-timing-grid"></div>
+      </div>
+      <button id="refresh-monitor-btn" class="btn small secondary" type="button">Refresh</button>
+    </details>
+  </section>
 
   <footer class="footer">
     <p>Local tool for testing VideoReverse. API key stays on your machine.</p>

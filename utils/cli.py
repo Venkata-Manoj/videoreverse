@@ -190,6 +190,8 @@ Arguments:
 
 Options:
   --help, -h           Show this help message
+  --explain-error      Print troubleshooting guide for an error code
+                        Usage: --explain-error VR-101
   --model, -m          Generate prompts only for specific models (comma-separated)
                         Options: {", ".join(SUPPORTED_MODELS)}
   --output-dir, -o      Custom output directory (default: {DEFAULT_OUTPUT_DIR})
@@ -212,11 +214,15 @@ Options:
   --batch <file>       Process all videos listed in a file (one path per line)
   --parallel <N>       Max concurrent videos in batch mode (default: 4)
 
+Troubleshooting:
+  --explain-error <VR-CODE>   Print detailed troubleshooting steps for an error
+
 Examples:
   python -m src.pipeline /mnt/e/vidrev/test1.mp4
   python -m src.pipeline E:\\vidrev\\test1.mp4 --model runway_gen4_5,google_veo3_1
   python -m src.pipeline /mnt/e/vidrev/test1.mp4 --format txt --verbose
   python -m src.pipeline https://example.com/video.mp4 --dry-run
+  python -m src.pipeline --explain-error VR-101
 """
     print(help_text)
 

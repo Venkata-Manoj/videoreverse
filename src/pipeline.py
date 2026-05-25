@@ -16,6 +16,7 @@ from src.ingest import ingest_video
 from src.path_resolver import normalize_for_env
 from src.synthesize import build_blueprint
 from utils.cli import detect_environment
+from utils.error_codes import VRError, VRErrorCode, resolve_error_code
 from utils.fallback import FallbackMode, build_fallback_blueprint, compile_fallback_prompts, log_fallback_usage
 from utils.logger import debug, error, info, log_pipeline_step, set_log_level, warn
 from utils.retry import RETRY_CONFIG, _is_retriable_error, extract_status_code, with_retry
@@ -174,6 +175,9 @@ async def run_pipeline(
             err_msg = f"Ingestion failed: {err}"
             results["errors"].append({"step": "ingest", "error": err_msg})
             error("ingest", err_msg)
+            if not isinstance(err, VRError):
+                code = resolve_error_code(err) or VRErrorCode.INTERNAL_ERROR
+                raise VRError(code, detail=str(err), cause=err) from err
             raise
 
         log_pipeline_step("ingest", results["timing"]["ingest_ms"], True)
@@ -248,7 +252,8 @@ async def run_pipeline(
                 results["steps"]["synthesize"] = blueprint
                 results["steps"]["synthesize"]["_fallback"] = True
             else:
-                raise
+                code = resolve_error_code(err) or VRErrorCode.GEMINI_SYNTHESIS_FAILED
+                raise VRError(code, detail=str(err), cause=err) from err
 
         log_pipeline_step("synthesis", results["timing"]["synthesize_ms"], not fallback.is_active())
         _emit_progress(
@@ -287,7 +292,7 @@ async def run_pipeline(
                 prompts = compile_fallback_prompts(blueprint, results["steps"]["ingest"])
                 results["steps"]["compile"] = prompts
             else:
-                raise
+                raise VRError(VRErrorCode.COMPILATION_FAILED, detail=str(err), cause=err) from err
 
         log_pipeline_step("compile", results["timing"]["compile_ms"], True)
         _emit_progress(
@@ -400,18 +405,14 @@ async def run_pipeline(
         error("pipeline", f"Pipeline failed after {(results['timing']['total_ms'] / 1000):.1f}s")
         error("pipeline", f"Error: {err}")
 
-        err_str = str(err)
-        if "ffmpeg" in err_str:
-            print("\n   Fix: apt install ffmpeg  (or brew install ffmpeg)", flush=True)
-        elif "GEMINI_API_KEY" in err_str:
-            print("\n   Fix: Add GEMINI_API_KEY to .env file", flush=True)
-        elif "not found" in err_str:
-            print("\n   Fix: Check the video path is correct and accessible", flush=True)
+        if not isinstance(err, VRError):
+            code = resolve_error_code(err) or VRErrorCode.INTERNAL_ERROR
+            err = VRError(code, detail=str(err), cause=err)
 
         _emit_progress(
             on_progress,
             "pipeline_error",
-            message=str(err),
+            message=err.to_dict(),
             timing=results.get("timing"),
             errors=results.get("errors"),
         )

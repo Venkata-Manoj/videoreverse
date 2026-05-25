@@ -8,6 +8,7 @@ import sys
 from src.batch import run_batch_pipeline
 from src.pipeline import run_pipeline
 from utils.cli import detect_environment, parse_cli_args, print_help
+from utils.error_codes import VRError, VRErrorCode, explain_error, print_error_report
 from utils.logger import error, info, set_log_level
 
 
@@ -18,11 +19,25 @@ def main() -> None:
         print_help()
         sys.exit(0)
 
+    if "--explain-error" in args:
+        idx = args.index("--explain-error")
+        if idx + 1 < len(args) and args[idx + 1]:
+            code = args[idx + 1].upper()
+            print(explain_error(code))
+        else:
+            print("Usage: --explain-error <VR-CODE>")
+            print("Example: --explain-error VR-101")
+            print("\nCommon error codes:")
+            for vrc in VRErrorCode:
+                print(f"  {vrc.code} — {vrc.message}")
+        sys.exit(0)
+
     is_batch = "--batch" in args
     if not is_batch and (len(args) == 0 or not args[0] or args[0].startswith("-")):
         print("Usage: python -m src.main <video_path_or_url> [options]", file=sys.stderr)
         print("       python -m src.main --batch <file_or_dir> [options]", file=sys.stderr)
         print("       python -m src.main --help  for all options", file=sys.stderr)
+        print("       python -m src.main --explain-error <VR-CODE> for troubleshooting", file=sys.stderr)
         print("", file=sys.stderr)
         print("Examples:", file=sys.stderr)
         print("  python -m src.main ./video.mp4", file=sys.stderr)
@@ -67,8 +82,16 @@ def main() -> None:
             print(json.dumps(output, indent=2), flush=True)
 
         sys.exit(0)
+    except VRError as err:
+        error("main", f"[{err.code}] {err.message}")
+        if err.detail:
+            error("main", f"  Detail: {err.detail}")
+        print_error_report(err.code_obj, err.detail)
+        sys.exit(1)
     except Exception as err:
         error("main", f"Fatal error: {err}")
+        print(f"\n  ❌ Unexpected error: {err}", flush=True)
+        print(f"  Run with --explain-error VR-499 for troubleshooting\n", flush=True)
         sys.exit(1)
 
 

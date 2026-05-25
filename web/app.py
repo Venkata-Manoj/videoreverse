@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -15,6 +16,7 @@ from utils.cli import (
     SUPPORTED_SAMPLE_MODES,
     detect_environment,
 )
+from utils.logger import info
 from web.jobs import JobStore
 from web.utils.error_codes import VRLErrorCode, format_user_friendly_error, get_error_details
 
@@ -215,6 +217,113 @@ def download_artifact(job_id: str, artifact: str) -> Response:
         return jsonify({"error": "Artifact missing on disk"}), 404
 
     return send_file(resolved, as_attachment=True, download_name=resolved.name)
+
+
+@app.route("/api/templates", methods=["GET"])
+def get_templates() -> Response:
+    templates_path = Path("config/prompt_templates.json")
+    if not templates_path.exists():
+        return jsonify({"error": "Templates file not found"}), 404
+    with open(templates_path, encoding="utf-8") as f:
+        templates = json.load(f)
+    model_names = list(templates.keys())
+    return jsonify({
+        "templates": templates,
+        "models": model_names,
+        "default_template": templates.get(model_names[0]) if model_names else None,
+    })
+
+
+@app.route("/api/templates/<model_id>", methods=["GET"])
+def get_template(model_id: str) -> Response:
+    templates_path = Path("config/prompt_templates.json")
+    if not templates_path.exists():
+        return jsonify({"error": "Templates file not found"}), 404
+    with open(templates_path, encoding="utf-8") as f:
+        templates = json.load(f)
+    if model_id not in templates:
+        return jsonify({"error": f"Model '{model_id}' not found"}), 404
+    return jsonify(templates[model_id])
+
+
+@app.route("/api/templates/<model_id>", methods=["PUT"])
+def update_template(model_id: str) -> Response:
+    templates_path = Path("config/prompt_templates.json")
+    if not templates_path.exists():
+        return jsonify({"error": "Templates file not found"}), 404
+
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON body"}), 400
+
+    with open(templates_path, encoding="utf-8") as f:
+        templates = json.load(f)
+
+    if model_id not in templates:
+        return jsonify({"error": f"Model '{model_id}' not found"}), 404
+
+    existing = templates[model_id]
+    for key in ("template", "label", "supports_negative", "max_duration", "aspect_ratio_support", "negative_placeholder", "notes", "enhancement_rules"):
+        if key in data:
+            existing[key] = data[key]
+
+    with open(templates_path, "w", encoding="utf-8") as f:
+        json.dump(templates, f, indent=2)
+
+    info("web", f"Template '{model_id}' updated via web UI")
+    return jsonify({"ok": True, "model": model_id, "template": existing})
+
+
+@app.route("/api/monitoring")
+def monitoring() -> Response:
+    pipeline_history_path = Path("output_blueprints/pipeline_history.jsonl")
+    total_jobs = 0
+    total_errors = 0
+    total_fallbacks = 0
+    timing_data: list[dict] = []
+
+    if pipeline_history_path.exists():
+        with open(pipeline_history_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                    total_jobs += 1
+                    if entry.get("errors"):
+                        total_errors += 1
+                    if entry.get("fallback_active"):
+                        total_fallbacks += 1
+                    if entry.get("timing"):
+                        timing_data.append(entry["timing"])
+                except json.JSONDecodeError:
+                    pass
+
+    output_dir = Path("output_blueprints")
+    output_files = list(output_dir.glob("*.json")) + list(output_dir.glob("*.txt"))
+    output_size = sum(f.stat().st_size for f in output_files if f.exists())
+
+    avg_timing = {}
+    if timing_data:
+        for key in ("ingest_ms", "synthesize_ms", "compile_ms", "total_ms"):
+            values = [t.get(key, 0) for t in timing_data if t.get(key)]
+            if values:
+                avg_timing[key] = round(sum(values) / len(values), 1)
+
+    return jsonify({
+        "total_jobs": total_jobs,
+        "total_errors": total_errors,
+        "total_fallbacks": total_fallbacks,
+        "error_rate": round(total_errors / total_jobs * 100, 1) if total_jobs > 0 else 0,
+        "fallback_rate": round(total_fallbacks / total_jobs * 100, 1) if total_jobs > 0 else 0,
+        "output_files": len(output_files),
+        "output_size_bytes": output_size,
+        "output_size_mb": round(output_size / (1024 * 1024), 2),
+        "average_timing_ms": avg_timing,
+        "hub_jobs": len(job_store._jobs),
+        "last_updated": datetime.now(UTC).isoformat(),
+    })
 
 
 def main() -> None:
