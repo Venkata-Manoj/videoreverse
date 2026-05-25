@@ -21,7 +21,7 @@
         "sentence_style": "concise",
         "camera_first": true,
         "avoid_adjectives": ["stunning", "breathtaking", "amazing", "beautiful", "gorgeous"],
-        "avoid_phrases": ["the camera captures", "we see", "the viewer notices"],
+        "avoid_phrases": ["we see", "the viewer notices"],
         "prefer_specifics": ["35mm lens", "f/2.8", "shallow depth of field", "medium close-up", "slow push-in", "golden hour backlight"],
         "temporal_keywords": ["slowly", "gradually", "steadily"],
         "composition_tips": "Runway responds well to specific lens/focal length mentions. Always lead with camera movement."
@@ -129,7 +129,7 @@
         "motion_keywords": ["realistic motion", "natural movement", "smooth animation", "fluid dynamics"],
         "lighting_keywords": ["natural light", "studio lighting", "golden hour", "dramatic shadows"],
         "style_keywords": ["photorealistic", "cinematic", "documentary-style", "film look"],
-        "brevity_keywords": ["", "", ""]
+        "brevity_keywords": ["concise prompt", "short punchy", "tight framing", "every word counts", "direct description"]
       },
       "prompt_guidelines": {
         "max_length": 200,
@@ -137,7 +137,7 @@
         "emphasize_brevity": true,
         "emphasize_realism": true,
         "avoid_adjectives": ["stunning", "breathtaking", "amazing", "beautiful"],
-        "avoid_phrases": ["the camera captures", "we see", "set in a"],
+        "avoid_phrases": ["we see", "set in a"],
         "prefer_specifics": ["photorealistic", "natural motion", "clean composition", "realistic lighting"],
         "composition_tips": "Luma needs concise prompts. Every word counts. Lead with style, describe action simply, mention lighting. No flowery language."
       }
@@ -222,7 +222,7 @@
         "emphasize_comma_format": true,
         "emphasize_negative": true,
         "emphasize_quality_tags": true,
-        "avoid_phrases": ["a video of", "showing", "the camera"],
+        "avoid_phrases": ["a video of", "showing"],
         "prefer_specifics": ["masterpiece", "best quality", "high resolution", "sharp focus", "dramatic lighting"],
         "composition_tips": "SVD follows SD conventions. Start with quality tags, then subject, then environment, then technical details. Use negative prompts aggressively."
       }

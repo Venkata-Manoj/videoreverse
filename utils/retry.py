@@ -9,7 +9,7 @@ from typing import Any, TypeVar
 T = TypeVar("T")
 
 RETRY_CONFIG: dict[str, Any] = {
-    "maxRetries": 5,
+    "maxRetries": 3,
     "baseDelay": 2000,
     "maxDelay": 60000,
     "exponentialBase": 2,

@@ -225,7 +225,7 @@ def print_help() -> None:
 VideoReverse — Universal Video-to-Prompt Pipeline
 
 Usage:
-  python -m src.pipeline <video_path_or_url> [options]
+  python -m src.main <video_path_or_url> [options]
 
 Arguments:
   video_path_or_url    Path to video file or URL
@@ -266,13 +266,13 @@ Troubleshooting:
   --explain-error <VR-CODE>   Print detailed troubleshooting steps for an error
 
 Examples:
-  python -m src.pipeline /mnt/e/vidrev/test1.mp4
-  python -m src.pipeline /mnt/e/vidrev/test1.mp4 --profile fast
-  python -m src.pipeline /mnt/e/vidrev/test1.mp4 --profile quality --model runway_gen4_5
-  python -m src.pipeline E:\\vidrev\\test1.mp4 --model runway_gen4_5,google_veo3_1
-  python -m src.pipeline /mnt/e/vidrev/test1.mp4 --format txt --verbose
-  python -m src.pipeline https://example.com/video.mp4 --dry-run
-  python -m src.pipeline --explain-error VR-101
+  python -m src.main /mnt/e/vidrev/test1.mp4
+  python -m src.main /mnt/e/vidrev/test1.mp4 --profile fast
+  python -m src.main /mnt/e/vidrev/test1.mp4 --profile quality --model runway_gen4_5
+  python -m src.main E:\\vidrev\\test1.mp4 --model runway_gen4_5,google_veo3_1
+  python -m src.main /mnt/e/vidrev/test1.mp4 --format txt --verbose
+  python -m src.main https://example.com/video.mp4 --dry-run
+  python -m src.main --explain-error VR-101
 """
     print(help_text)
 

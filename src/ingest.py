@@ -4,28 +4,14 @@ import glob
 import json
 import math
 import os
-import re
 import subprocess
 import tempfile
 from collections.abc import Callable
 from typing import Any, cast
 
+from src.path_resolver import normalize_for_env
+
 IngestProgressCallback = Callable[[str, str], None]
-
-
-def _normalize_path(target: str | Any) -> str | Any:
-    if not isinstance(target, str):
-        return target
-    if "://" in target:
-        return target
-    is_windows_path = bool(re.match(r"^[a-zA-Z]:[\\/]", target))
-    if is_windows_path:
-        drive = target[0].lower()
-        posix_path = target[2:].replace("\\", "/").lstrip("/")
-        return f"/mnt/{drive}/{posix_path}"
-    if re.match(r"^/mnt/[a-z]/", target, re.IGNORECASE):
-        return target
-    return os.path.abspath(target)
 
 
 def _check_ffmpeg() -> bool:
@@ -218,7 +204,7 @@ def ingest_video(
         options = {}
 
     print("VideoReverse: Step 1 - Ingestion & Sampling", flush=True)
-    normalized = _normalize_path(video_target)
+    normalized = normalize_for_env(video_target)
     print(f"Target: {video_target}", flush=True)
     if normalized != video_target:
         print(f"  -> Resolved: {normalized}", flush=True)

@@ -142,27 +142,12 @@ def _build_shot_boundary_hints(scene_changes: list[dict[str, Any]] | None) -> st
 
 
 def _extract_motion_transitions(timeline_frames: list[dict[str, Any]] | None) -> str | None:
-    if not timeline_frames or len(timeline_frames) < 3:
+    if not timeline_frames:
         return None
-
-    transitions = []
-    for i in range(1, len(timeline_frames) - 1):
-        prev = timeline_frames[i - 1]
-        curr = timeline_frames[i]
-        next_frame = timeline_frames[i + 1]
-
-        def motion_value(f: dict[str, Any]) -> int:
-            ml = f.get("motion_level", "medium")
-            return 2 if ml == "high" else (0 if ml == "low" else 1)
-
-        prev_m = motion_value(prev)
-        curr_m = motion_value(curr)
-        next_m = motion_value(next_frame)
-
-        if abs(curr_m - prev_m) >= 2 or abs(next_m - curr_m) >= 2:
-            transitions.append(f"{curr.get('timestamp_seconds', 0):.1f}s (frame {curr['index']})")
-
-    return ", ".join(transitions) if transitions else None
+    transitions = _detect_motion_transitions(timeline_frames)
+    if not transitions:
+        return None
+    return ", ".join(f"{t['timestamp']:.1f}s (frame {t['frame_index']})" for t in transitions)
 
 
 async def build_blueprint(

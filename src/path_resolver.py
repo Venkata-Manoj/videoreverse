@@ -41,7 +41,7 @@ def resolve_template(template_name: str) -> dict[str, Any]:
         return json.load(f)
 
 
-def normalize_for_env(target: str | Any) -> str | Any:
+def normalize_for_env(target: str | Any, wsl_mode: str | None = None) -> str | Any:
     if not isinstance(target, str):
         return target
     if "://" in target:
@@ -56,10 +56,22 @@ def normalize_for_env(target: str | Any) -> str | Any:
 
     import re
 
+    env = wsl_mode
+    if env is None:
+        from utils.cli import detect_environment
+        env = detect_environment()
+
+    if env == "win":
+        return os.path.abspath(target)
+
     is_windows_path = bool(re.match(r"^[a-zA-Z]:[\\/]", target))
     if is_windows_path:
         drive = target[0].lower()
         posix_path = target[2:].replace("\\", "/").lstrip("/")
         return f"/mnt/{drive}/{posix_path}"
+
+    m = re.match(r"^/mnt/([a-z])/", target, re.IGNORECASE)
+    if m:
+        return f"/mnt/{m.group(1).lower()}/{target[len(m.group(0)):]}"
 
     return os.path.abspath(target)

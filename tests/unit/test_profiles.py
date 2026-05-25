@@ -115,3 +115,31 @@ def _quality_profile_no_max_duration() -> None:
     expect(opts["max_duration"]).to_be(None)
 
 it("quality profile does not set max_duration", _quality_profile_no_max_duration)
+
+
+def _profile_after_flags_still_applies() -> None:
+    opts = parse_cli_args(["--sample-mode", "full", "--profile", "fast", "test.mp4"])
+    expect(opts["profile"]).to_be("fast")
+    expect(opts["max_duration"]).to_be(15)
+
+it("profile works when placed after other flags", _profile_after_flags_still_applies)
+
+
+def _profile_in_middle_of_flags() -> None:
+    opts = parse_cli_args(["--model", "runway_gen4_5", "--profile", "cheap", "--max-duration", "30", "test.mp4"])
+    expect(opts["profile"]).to_be("cheap")
+    expect(opts["sample_mode"]).to_be("highlights")
+    expect(opts["max_duration"]).to_be(30)
+    expect(opts["no_cache"]).to_be(True)
+
+it("profile works when placed in middle of flags", _profile_in_middle_of_flags)
+
+
+def _profile_before_flags_applies_defaults_then_overrides() -> None:
+    opts = parse_cli_args(["--profile", "fast", "--max-duration", "60", "test.mp4"])
+    expect(opts["profile"]).to_be("fast")
+    expect(opts["sample_mode"]).to_be("first-n")
+    expect(opts["max_duration"]).to_be(60)
+    expect(opts["gemini_model"]).to_be("gemini-2.5-flash")
+
+it("profile before flags: explicit flags override profile defaults", _profile_before_flags_applies_defaults_then_overrides)

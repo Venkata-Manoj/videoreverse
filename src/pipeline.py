@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-import re
+import shutil
 from datetime import UTC, datetime, timezone
 from collections.abc import Callable
 from typing import Any
@@ -24,32 +24,14 @@ from utils.validation import sanitize_blueprint, validate_blueprint
 from utils.video_type import detect_video_type, get_video_type_label
 
 
-def _normalize_path(target: str | Any, wsl_mode: str | None = None) -> str | Any:
-    if not isinstance(target, str):
-        return target
-    if "://" in target:
-        return target
-
-    is_unc = target.startswith("\\\\")
-    if is_unc:
-        unc_path = target.replace("\\\\", "/").replace("\\", "/")
-        parts = [p for p in unc_path.split("/") if p]
-        if len(parts) >= 2:
-            return f"/mnt/{parts[0].lower()}/{'/'.join(parts[1:])}"
-
-    env = wsl_mode or detect_environment()
-    if env == "win":
-        return os.path.abspath(target)
-
-    is_windows_path = bool(re.match(r"^[a-zA-Z]:[\\/]", target))
-    if is_windows_path:
-        drive = target[0].lower()
-        posix_path = target[2:].replace("\\", "/").lstrip("/")
-        return f"/mnt/{drive}/{posix_path}"
-
-    if re.match(r"^/mnt/[a-z]/", target, re.IGNORECASE):
-        return target
-    return os.path.abspath(target)
+def _cleanup_temp_dir(results: dict[str, Any]) -> None:
+    temp_dir = results.get("steps", {}).get("ingest", {}).get("output_dir")
+    if temp_dir and os.path.isdir(temp_dir):
+        try:
+            shutil.rmtree(temp_dir)
+            debug("cleanup", f"Removed temp directory: {temp_dir}")
+        except Exception as e:
+            warn("cleanup", f"Failed to remove temp directory {temp_dir}: {e}")
 
 
 def _emit_progress(
@@ -90,8 +72,8 @@ async def run_pipeline(
     )
     _emit_progress(on_progress, "step", step="resolve", status="running", message="Resolving video path")
 
-    normalized = _normalize_path(options.get("video_path"), options.get("wsl_mode"))
-    video_type = options.get("video_type") or detect_video_type(None, None)
+    normalized = normalize_for_env(options.get("video_path"), options.get("wsl_mode"))
+    video_type = options.get("video_type")
 
     _emit_progress(
         on_progress,
@@ -348,10 +330,13 @@ async def run_pipeline(
                 fallback=fallback.is_active(),
                 output=results["output"],
             )
-            print("\n" + "═" * 60, flush=True)
-            print("  DRY RUN — No files saved", flush=True)
-            print("═" * 60, flush=True)
-            print(json.dumps(results["output"], indent=2), flush=True)
+            is_quiet = options.get("log_level") == "quiet"
+            if not is_quiet:
+                print("\n" + "═" * 60, flush=True)
+                print("  DRY RUN — No files saved", flush=True)
+                print("═" * 60, flush=True)
+                print(json.dumps(results["output"], indent=2), flush=True)
+            _cleanup_temp_dir(results)
             return results["output"]
 
         _emit_progress(on_progress, "step", step="export", status="running", message="Saving JSON and text outputs")
@@ -416,6 +401,7 @@ async def run_pipeline(
             files=saved_files,
         )
 
+        _cleanup_temp_dir(results)
         return results["output"]
 
     except Exception as err:
@@ -439,4 +425,5 @@ async def run_pipeline(
             errors=results.get("errors"),
         )
 
+        _cleanup_temp_dir(results)
         raise

@@ -1,9 +1,11 @@
+import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from src.compile import compile_prompts
+from src.path_resolver import get_config_path
 from tests.unit.test_framework import describe, it, expect
 
 MOCK_BLUEPRINT = {
@@ -86,3 +88,34 @@ def run_tests():
         expect(prompts.get('runway_gen4_5')).to_be_defined()
 
     describe('compilePrompts', lambda: it('should handle empty negative_elements', _test_empty_negatives))
+
+    def _test_luma_no_empty_keywords():
+        with open(get_config_path("prompt_templates.json"), encoding="utf-8") as f:
+            templates = json.load(f)
+        luma = templates["luma_dream_machine"]
+        keywords = luma["enhancement_rules"]["keyword_injection"]["brevity_keywords"]
+        expect(all(k != "" for k in keywords)).to_be(True)
+        expect(len(keywords)).to_be_greater_than(0)
+
+    describe("Templates", lambda: it("luma brevity_keywords has no empty strings", _test_luma_no_empty_keywords))
+
+    def _test_svd_no_camera_in_avoid_phrases():
+        with open(get_config_path("prompt_templates.json"), encoding="utf-8") as f:
+            templates = json.load(f)
+        svd = templates["stable_video_diffusion"]
+        phrases = svd["enhancement_rules"]["prompt_guidelines"]["avoid_phrases"]
+        expect("the camera" not in phrases).to_be(True)
+
+    describe("Templates", lambda: it("SVD avoid_phrases does not contradict {camera} placeholder", _test_svd_no_camera_in_avoid_phrases))
+
+    def _test_no_model_has_camera_contradiction():
+        with open(get_config_path("prompt_templates.json"), encoding="utf-8") as f:
+            templates = json.load(f)
+        for model_key, model_data in templates.items():
+            template = model_data.get("template", "")
+            if "{camera}" in template:
+                avoid = model_data.get("enhancement_rules", {}).get("prompt_guidelines", {}).get("avoid_phrases", [])
+                for phrase in avoid:
+                    expect("camera" in phrase).to_be(False)
+
+    describe("Templates", lambda: it("no model has camera-related avoid_phrases that contradict {camera} placeholder", _test_no_model_has_camera_contradiction))

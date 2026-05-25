@@ -1,6 +1,6 @@
 [project]
 name = "vidrev"
-version = "1.1.0"
+version = "2.1.0"
 description = "Universal Video-to-Prompt Pipeline — deconstruct any video into production-ready prompts for 8+ AI video models"
 readme = "README.md"
 license = {text = "MIT"}

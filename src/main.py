@@ -79,7 +79,7 @@ def main() -> None:
             info("main", f"Video path: {options['video_path']}")
             output = asyncio.run(run_pipeline(options))
 
-            if options.get("dry_run"):
+            if options.get("dry_run") and options.get("log_level") != "quiet":
                 print("\n" + "═" * 60, flush=True)
                 print("  DRY RUN — No files saved", flush=True)
                 print("═" * 60 + "\n", flush=True)

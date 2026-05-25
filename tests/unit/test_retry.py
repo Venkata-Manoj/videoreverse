@@ -9,6 +9,13 @@ from tests.unit.test_framework import describe, it, expect
 
 
 def run_tests():
+    def _test_default_max_retries():
+        expect(RETRY_CONFIG["maxRetries"]).to_be(3)
+        expect(RETRY_CONFIG["baseDelay"]).to_be(2000)
+        expect(RETRY_CONFIG["maxDelay"]).to_be(60000)
+
+    describe("RETRY_CONFIG", lambda: it("default maxRetries is 3", _test_default_max_retries))
+
     def _test_delay_increases():
         delay1 = calculate_delay(1)
         delay2 = calculate_delay(2)
