@@ -209,16 +209,22 @@
     <details id="monitoring-details">
       <summary><h2>Monitoring Dashboard</h2></summary>
       <div class="monitoring-grid" id="monitoring-grid">
-        <div class="monitor-stat"><strong id="monitor-total-jobs">-</strong><span>Total Jobs</span></div>
-        <div class="monitor-stat"><strong id="monitor-error-rate">-</strong><span>Error Rate</span></div>
+        <div class="monitor-stat"><strong id="monitor-total-runs">-</strong><span>Pipeline Runs</span></div>
+        <div class="monitor-stat"><strong id="monitor-success-rate">-</strong><span>Success Rate</span></div>
         <div class="monitor-stat"><strong id="monitor-fallback-rate">-</strong><span>Fallback Rate</span></div>
+        <div class="monitor-stat"><strong id="monitor-cache-rate">-</strong><span>Cache Hit Rate</span></div>
+        <div class="monitor-stat"><strong id="monitor-total-retries">-</strong><span>Total Retries</span></div>
         <div class="monitor-stat"><strong id="monitor-output-files">-</strong><span>Output Files</span></div>
         <div class="monitor-stat"><strong id="monitor-output-size">-</strong><span>Output Size</span></div>
         <div class="monitor-stat"><strong id="monitor-active-jobs">-</strong><span>Active Jobs</span></div>
       </div>
       <div id="monitor-timing" class="monitor-timing hidden">
-        <h4>Average Timing (ms)</h4>
+        <h4>Average Timing</h4>
         <div class="monitoring-grid" id="monitor-timing-grid"></div>
+      </div>
+      <div id="monitor-recent" class="monitor-recent hidden">
+        <h4>Recent Runs</h4>
+        <div class="monitor-recent-table" id="monitor-recent-table"></div>
       </div>
       <button id="refresh-monitor-btn" class="btn small secondary" type="button">Refresh</button>
     </details>

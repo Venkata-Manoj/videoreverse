@@ -276,53 +276,55 @@ def update_template(model_id: str) -> Response:
 
 @app.route("/api/monitoring")
 def monitoring() -> Response:
-    pipeline_history_path = Path("output_blueprints/pipeline_history.jsonl")
-    total_jobs = 0
-    total_errors = 0
-    total_fallbacks = 0
-    timing_data: list[dict] = []
+    from utils.metrics import compute_summary, load_pipeline_history
 
-    if pipeline_history_path.exists():
-        with open(pipeline_history_path, encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    entry = json.loads(line)
-                    total_jobs += 1
-                    if entry.get("errors"):
-                        total_errors += 1
-                    if entry.get("fallback_active"):
-                        total_fallbacks += 1
-                    if entry.get("timing"):
-                        timing_data.append(entry["timing"])
-                except json.JSONDecodeError:
-                    pass
+    summary = compute_summary()
+    entries = load_pipeline_history()
+    v2_entries = [e for e in entries if e.get("version") == "2.0"]
 
     output_dir = Path("output_blueprints")
     output_files = list(output_dir.glob("*.json")) + list(output_dir.glob("*.txt"))
     output_size = sum(f.stat().st_size for f in output_files if f.exists())
 
-    avg_timing = {}
-    if timing_data:
-        for key in ("ingest_ms", "synthesize_ms", "compile_ms", "total_ms"):
-            values = [t.get(key, 0) for t in timing_data if t.get(key)]
-            if values:
-                avg_timing[key] = round(sum(values) / len(values), 1)
+    recent_runs = []
+    for entry in v2_entries[-10:]:
+        recent_runs.append({
+            "timestamp": entry.get("timestamp", ""),
+            "video_path": entry.get("video_path", ""),
+            "video_type": entry.get("video_type"),
+            "success": entry.get("success"),
+            "total_ms": (entry.get("timing_ms") or {}).get("total_ms"),
+            "fallback_active": (entry.get("fallback") or {}).get("active", False),
+            "cache_hit": (entry.get("cache") or {}).get("hit", False),
+            "models_compiled": entry.get("models_compiled"),
+            "shots_detected": entry.get("shots_detected"),
+            "errors": len(entry.get("errors") or []),
+        })
 
     return jsonify({
-        "total_jobs": total_jobs,
-        "total_errors": total_errors,
-        "total_fallbacks": total_fallbacks,
-        "error_rate": round(total_errors / total_jobs * 100, 1) if total_jobs > 0 else 0,
-        "fallback_rate": round(total_fallbacks / total_jobs * 100, 1) if total_jobs > 0 else 0,
+        "total_pipeline_runs": summary["total_pipeline_runs"],
+        "total_old_step_entries": summary["total_old_step_entries"],
+        "total_history_entries": summary["total_history_entries"],
+        "successful_runs": summary["successful_runs"],
+        "failed_runs": summary["failed_runs"],
+        "success_rate": summary["success_rate"],
+        "total_fallbacks": summary["total_fallbacks"],
+        "fallback_rate": summary["fallback_rate"],
+        "total_cache_hits": summary["total_cache_hits"],
+        "cache_hit_rate": summary["cache_hit_rate"],
+        "total_retries": summary["total_retries"],
+        "total_errors": summary["total_errors"],
+        "total_models_compiled": summary["total_models_compiled"],
+        "total_shots_detected": summary["total_shots_detected"],
+        "average_timing_ms": summary.get("average_timing_ms", {}),
+        "fastest_pipeline_ms": summary.get("fastest_pipeline_ms"),
+        "slowest_pipeline_ms": summary.get("slowest_pipeline_ms"),
         "output_files": len(output_files),
         "output_size_bytes": output_size,
         "output_size_mb": round(output_size / (1024 * 1024), 2),
-        "average_timing_ms": avg_timing,
+        "recent_runs": recent_runs,
         "hub_jobs": len(job_store._jobs),
-        "last_updated": datetime.now(UTC).isoformat(),
+        "last_updated": summary.get("last_updated", ""),
     })
 
 

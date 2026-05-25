@@ -932,9 +932,11 @@ async function loadMonitoring() {
     const res = await fetch("/api/monitoring");
     const data = await res.json();
 
-    document.getElementById("monitor-total-jobs").textContent = data.total_jobs;
-    document.getElementById("monitor-error-rate").textContent = `${data.error_rate}%`;
+    document.getElementById("monitor-total-runs").textContent = data.total_pipeline_runs;
+    document.getElementById("monitor-success-rate").textContent = `${data.success_rate}%`;
     document.getElementById("monitor-fallback-rate").textContent = `${data.fallback_rate}%`;
+    document.getElementById("monitor-cache-rate").textContent = `${data.cache_hit_rate}%`;
+    document.getElementById("monitor-total-retries").textContent = data.total_retries;
     document.getElementById("monitor-output-files").textContent = data.output_files;
     document.getElementById("monitor-output-size").textContent = `${data.output_size_mb} MB`;
     document.getElementById("monitor-active-jobs").textContent = data.hub_jobs;
@@ -948,11 +950,37 @@ async function loadMonitoring() {
       timingGrid.innerHTML = Object.entries(avg)
         .map(([key, val]) => {
           const label = key.replace("_ms", "").replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
-          return `<div class="monitor-stat"><strong>${val}</strong><span>${escapeHtml(label)}</span></div>`;
+          const display = key === "total_ms" && val >= 1000 ? `${(val / 1000).toFixed(1)}s` : `${val}ms`;
+          return `<div class="monitor-stat"><strong>${display}</strong><span>${escapeHtml(label)}</span></div>`;
         })
         .join("");
     } else {
       timingDiv.classList.add("hidden");
+    }
+
+    const recentDiv = document.getElementById("monitor-recent");
+    const recentTable = document.getElementById("monitor-recent-table");
+    const runs = data.recent_runs || [];
+    if (runs.length > 0) {
+      recentDiv.classList.remove("hidden");
+      recentTable.innerHTML = `<table class="monitor-table">
+        <thead><tr><th>Time</th><th>Video</th><th>Type</th><th>Dur</th><th>Models</th><th>FB</th><th>Cache</th></tr></thead>
+        <tbody>${runs.map(r => {
+          const ts = (r.timestamp || "").slice(0, 19).replace("T", " ");
+          const vid = (r.video_path || "").split("/").pop() || "-";
+          const dur = r.total_ms ? (r.total_ms >= 1000 ? `${(r.total_ms/1000).toFixed(1)}s` : `${r.total_ms}ms`) : "-";
+          return `<tr class="${r.success ? "" : "error-row"}">
+            <td>${escapeHtml(ts)}</td>
+            <td title="${escapeHtml(r.video_path || "")}">${escapeHtml(vid)}</td>
+            <td>${escapeHtml(r.video_type || "-")}</td>
+            <td>${dur}</td>
+            <td>${r.models_compiled ?? "-"}</td>
+            <td>${r.fallback_active ? "⚠️" : ""}</td>
+            <td>${r.cache_hit ? "✅" : ""}</td>
+          </tr>`;
+        }).join("")}</tbody></table>`;
+    } else {
+      recentDiv.classList.add("hidden");
     }
   } catch (err) {
     console.error("Failed to load monitoring data:", err);

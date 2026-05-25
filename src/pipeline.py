@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import time
 from datetime import UTC, datetime, timezone
 from collections.abc import Callable
 from typing import Any
@@ -19,6 +18,7 @@ from utils.cli import detect_environment
 from utils.error_codes import VRError, VRErrorCode, resolve_error_code
 from utils.fallback import FallbackMode, build_fallback_blueprint, compile_fallback_prompts, log_fallback_usage
 from utils.logger import debug, error, info, log_pipeline_step, set_log_level, warn
+from utils.metrics import PipelineMetrics
 from utils.retry import RETRY_CONFIG, _is_retriable_error, extract_status_code, with_retry
 from utils.validation import sanitize_blueprint, validate_blueprint
 from utils.video_type import detect_video_type, get_video_type_label
@@ -78,7 +78,7 @@ async def run_pipeline(
     options: dict[str, Any],
     on_progress: ProgressCallback | None = None,
 ) -> dict[str, Any]:
-    start_time = time.time() * 1000
+    metrics = PipelineMetrics(options)
     fallback = FallbackMode()
 
     _emit_progress(
@@ -125,7 +125,7 @@ async def run_pipeline(
     }
 
     try:
-        ingest_start = time.time() * 1000
+        metrics.start_step("ingest")
         _emit_progress(
             on_progress,
             "step",
@@ -146,6 +146,7 @@ async def run_pipeline(
             )
 
         def _on_ingest_retry(attempt: int, delay_ms: int, err_msg: str) -> None:
+            metrics.retries += 1
             _emit_progress(
                 on_progress,
                 "retry",
@@ -164,34 +165,41 @@ async def run_pipeline(
                 on_retry=_on_ingest_retry,
             )
             results["steps"]["ingest"] = step1_data
-            results["timing"]["ingest_ms"] = time.time() * 1000 - ingest_start
+            metrics.end_step("ingest")
 
             detected_type = detect_video_type(step1_data.get("video_metadata"), step1_data.get("extraction"))
+            metrics.video_type = detected_type
+            meta = step1_data.get("video_metadata") or {}
+            metrics.video_duration = meta.get("duration_seconds")
             info("video-type", f"Detected: {detected_type}")
 
             if options.get("video_type") and options["video_type"] != detected_type:
                 warn("video-type", f"Override: {options['video_type']} (detected: {detected_type})")
         except Exception as err:
             err_msg = f"Ingestion failed: {err}"
+            metrics.end_step("ingest")
+            metrics.record_error("ingest", err_msg)
             results["errors"].append({"step": "ingest", "error": err_msg})
             error("ingest", err_msg)
+            metrics.success = False
+            metrics.write()
             if not isinstance(err, VRError):
                 code = resolve_error_code(err) or VRErrorCode.INTERNAL_ERROR
                 raise VRError(code, detail=str(err), cause=err) from err
             raise
 
-        log_pipeline_step("ingest", results["timing"]["ingest_ms"], True)
+        log_pipeline_step("ingest", metrics.timing_ms.get("ingest_ms", 0), True)
         _emit_progress(
             on_progress,
             "step",
             step="ingest",
             status="done",
             message="Ingestion complete",
-            duration_ms=results["timing"]["ingest_ms"],
+            duration_ms=metrics.timing_ms.get("ingest_ms", 0),
         )
 
         blueprint = None
-        synth_start = time.time() * 1000
+        metrics.start_step("synthesize")
         _emit_progress(
             on_progress,
             "step",
@@ -202,6 +210,7 @@ async def run_pipeline(
         print("\n── Blueprint Synthesis ──\n", flush=True)
 
         def _on_synth_retry(attempt: int, delay_ms: int, err_msg: str) -> None:
+            metrics.retries += 1
             _emit_progress(
                 on_progress,
                 "retry",
@@ -229,9 +238,9 @@ async def run_pipeline(
                 blueprint = sanitize_blueprint(blueprint)
 
             results["steps"]["synthesize"] = blueprint
-            results["timing"]["synthesize_ms"] = time.time() * 1000 - synth_start
+            metrics.end_step("synthesize")
         except Exception as err:
-            results["timing"]["synthesize_ms"] = time.time() * 1000 - synth_start
+            metrics.end_step("synthesize")
 
             status = getattr(err, "status_code", None) or extract_status_code(str(err))
             use_fallback = options.get("force") or options.get("use_fallback", True)
@@ -239,6 +248,8 @@ async def run_pipeline(
 
             if use_fallback and is_transient:
                 fallback.activate(f"Gemini synthesis failed: {err}")
+                metrics.fallback_active = True
+                metrics.fallback_reason = str(err)
                 log_fallback_usage(fallback, "synthesis", err)
                 _emit_progress(
                     on_progress,
@@ -255,19 +266,19 @@ async def run_pipeline(
                 code = resolve_error_code(err) or VRErrorCode.GEMINI_SYNTHESIS_FAILED
                 raise VRError(code, detail=str(err), cause=err) from err
 
-        log_pipeline_step("synthesis", results["timing"]["synthesize_ms"], not fallback.is_active())
+        log_pipeline_step("synthesis", metrics.timing_ms.get("synthesize_ms", 0), not fallback.is_active())
         _emit_progress(
             on_progress,
             "step",
             step="synthesize",
             status="done",
             message="Blueprint ready" + (" (fallback mode)" if fallback.is_active() else ""),
-            duration_ms=results["timing"]["synthesize_ms"],
+            duration_ms=metrics.timing_ms.get("synthesize_ms", 0),
             fallback=fallback.is_active(),
         )
 
         prompts = None
-        compile_start = time.time() * 1000
+        metrics.start_step("compile")
         _emit_progress(
             on_progress,
             "step",
@@ -283,9 +294,9 @@ async def run_pipeline(
             )
 
             results["steps"]["compile"] = prompts
-            results["timing"]["compile_ms"] = time.time() * 1000 - compile_start
+            metrics.end_step("compile")
         except Exception as err:
-            results["timing"]["compile_ms"] = time.time() * 1000 - compile_start
+            metrics.end_step("compile")
             error("compile", f"Prompt compilation failed: {err}")
 
             if fallback.is_active():
@@ -294,16 +305,22 @@ async def run_pipeline(
             else:
                 raise VRError(VRErrorCode.COMPILATION_FAILED, detail=str(err), cause=err) from err
 
-        log_pipeline_step("compile", results["timing"]["compile_ms"], True)
+        log_pipeline_step("compile", metrics.timing_ms.get("compile_ms", 0), True)
         _emit_progress(
             on_progress,
             "step",
             step="compile",
             status="done",
             message=f"Compiled prompts for {len(prompts or {})} model(s)",
-            duration_ms=results["timing"]["compile_ms"],
+            duration_ms=metrics.timing_ms.get("compile_ms", 0),
             model_count=len(prompts or {}),
         )
+
+        shots_list = blueprint.get("chronological_shots") or [] if blueprint else []
+        metrics.shots_detected = len(shots_list)
+        metrics.models_compiled = len(prompts or {})
+        metrics.fallback_active = fallback.is_active()
+        metrics.fallback_reason = fallback.get_reason()
 
         results["output"] = {
             "video_metadata": results["steps"]["ingest"].get("video_metadata", {}),
@@ -316,17 +333,18 @@ async def run_pipeline(
             },
         }
 
-        results["timing"]["total_ms"] = time.time() * 1000 - start_time
+        metrics.timing_ms["total_ms"] = round(metrics.elapsed_seconds * 1000, 1)
 
         if options.get("dry_run"):
+            metrics.write()
             _emit_progress(on_progress, "step", step="export", status="done", message="Dry run — results not saved to disk")
             _emit_progress(
                 on_progress,
                 "pipeline_complete",
                 message="Pipeline finished (dry run)",
-                timing=results["timing"],
-                shot_count=len(blueprint.get("chronological_shots", [])),
-                model_count=len(prompts or {}),
+                timing=metrics.timing_ms,
+                shot_count=metrics.shots_detected,
+                model_count=metrics.models_compiled,
                 fallback=fallback.is_active(),
                 output=results["output"],
             )
@@ -356,12 +374,15 @@ async def run_pipeline(
                 f.write(format_text(results["output"]))
             print(f"📄 Text: {text_file}", flush=True)
 
+        metrics.write()
+
         print("\n" + "═" * 60, flush=True)
         print("  Pipeline Complete", flush=True)
         print("═" * 60, flush=True)
-        print(f"  Duration:  {(results['timing']['total_ms'] / 1000):.1f}s", flush=True)
-        print(f"  Shots:     {len(blueprint.get('chronological_shots', []))}", flush=True)
-        print(f"  Models:    {len(prompts)}", flush=True)
+        total_s = metrics.timing_ms.get("total_ms", 0) / 1000
+        print(f"  Duration:  {total_s:.1f}s", flush=True)
+        print(f"  Shots:     {metrics.shots_detected}", flush=True)
+        print(f"  Models:    {metrics.models_compiled}", flush=True)
         fallback_status = "YES ⚠️" if fallback.is_active() else "NO"
         print(f"  Fallback:  {fallback_status}", flush=True)
 
@@ -387,9 +408,9 @@ async def run_pipeline(
             on_progress,
             "pipeline_complete",
             message="Pipeline finished successfully",
-            timing=results["timing"],
-            shot_count=len(blueprint.get("chronological_shots", [])),
-            model_count=len(prompts or {}),
+            timing=metrics.timing_ms,
+            shot_count=metrics.shots_detected,
+            model_count=metrics.models_compiled,
             fallback=fallback.is_active(),
             output=results["output"],
             files=saved_files,
@@ -398,11 +419,12 @@ async def run_pipeline(
         return results["output"]
 
     except Exception as err:
-        results["timing"]["total_ms"] = time.time() * 1000 - start_time
-        results["error"] = str(err)
-        results["errors"].append({"step": "pipeline", "error": str(err)})
+        metrics.success = False
+        metrics.timing_ms["total_ms"] = round(metrics.elapsed_seconds * 1000, 1)
+        metrics.record_error("pipeline", str(err))
+        metrics.write()
 
-        error("pipeline", f"Pipeline failed after {(results['timing']['total_ms'] / 1000):.1f}s")
+        error("pipeline", f"Pipeline failed after {(metrics.timing_ms.get('total_ms', 0) / 1000):.1f}s")
         error("pipeline", f"Error: {err}")
 
         if not isinstance(err, VRError):

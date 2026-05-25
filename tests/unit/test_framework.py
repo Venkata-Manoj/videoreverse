@@ -78,7 +78,6 @@ def it(name, fn):
         print(f'    ❌ {name}')
         print(f'       Error: {err}')
         _results.append(TestResult(name, False, str(err)))
-        raise
 
 
 def get_results():

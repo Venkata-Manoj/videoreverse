@@ -887,6 +887,37 @@ h1 {
   font-size: 0.95rem;
 }
 
+.monitor-recent {
+  margin: 0.5rem 0 1rem;
+}
+
+.monitor-recent h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.monitor-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.monitor-table th,
+.monitor-table td {
+  padding: 0.3rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.monitor-table th {
+  font-weight: 600;
+  color: #555;
+}
+
+.monitor-table .error-row {
+  color: #d32f2f;
+}
+
 /* ==============================
    Accessibility Improvements
    ============================== */
