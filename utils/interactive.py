@@ -13,6 +13,10 @@ from utils.compare import compare_prompts, print_comparison, save_comparison
 from utils.error_codes import VRError, VRErrorCode
 from utils.logger import info
 
+
+class _QuitSignal(BaseException):
+    pass
+
 SESSION_STATE: dict[str, Any] = {}
 OUTPUT_DIR: str | None = None
 
@@ -62,23 +66,27 @@ def cmd_help(*_) -> None:
 
 
 def cmd_status(*_) -> None:
-    meta = SESSION_STATE.get("video_metadata", {})
-    bp = SESSION_STATE.get("blueprint", {})
-    prompts = SESSION_STATE.get("prompts", {})
-    output = SESSION_STATE.get("full_output", {})
+    meta = SESSION_STATE.get("video_metadata") or {}
+    bp = SESSION_STATE.get("blueprint") or {}
+    prompts = SESSION_STATE.get("prompts") or {}
+    output = SESSION_STATE.get("full_output") or {}
 
     print(f"\n  Video:         {meta.get('filename', 'N/A')}", flush=True)
     print(f"  Duration:      {meta.get('duration_seconds', '?')}s", flush=True)
     print(f"  Resolution:    {meta.get('width', '?')}x{meta.get('height', '?')}", flush=True)
-    print(f"  Shots:         {len(bp.get('chronological_shots', []))}", flush=True)
+    shots_list = bp.get("chronological_shots") or []
+    print(f"  Shots:         {len(shots_list)}", flush=True)
     print(f"  Models:        {len(prompts)}", flush=True)
-    print(f"  Fallback:      {'Yes' if output.get('_meta', {}).get('fallback_active') else 'No'}", flush=True)
+    meta_section = output.get("_meta") or {}
+    print(f"  Fallback:      {'Yes' if meta_section.get('fallback_active') else 'No'}", flush=True)
 
     if prompts:
         print(f"\n  Compiled models:", flush=True)
         for key, model in prompts.items():
-            shots = len(model.get("shots", []))
-            print(f"    • {model.get('label', key)} ({shots} shots)", flush=True)
+            if not isinstance(model, dict):
+                continue
+            model_shots = model.get("shots") or []
+            print(f"    • {model.get('label', key)} ({len(model_shots)} shots)", flush=True)
     print(flush=True)
 
 
@@ -87,10 +95,10 @@ def cmd_show(*_) -> None:
     if not output:
         print("  No output available. Run the pipeline first.", flush=True)
         return
-    bp = output.get("blueprint", {})
-    aesthetic = bp.get("global_aesthetic", {})
-    shots = bp.get("chronological_shots", [])
-    prompts = output.get("prompts", {})
+    bp = output.get("blueprint") or {}
+    aesthetic = bp.get("global_aesthetic") or {}
+    shots = bp.get("chronological_shots") or []
+    prompts = output.get("prompts") or {}
 
     print(f"\n  Global Aesthetic:", flush=True)
     print(f"    Style:   {aesthetic.get('art_style', '-')}", flush=True)
@@ -101,6 +109,8 @@ def cmd_show(*_) -> None:
         print(f"    {i + 1}. ({shot.get('duration_seconds', '?'):>4}s) {shot.get('camera_direction', '-'):>12} — {shot.get('action_and_motion', '-')[:60]}", flush=True)
     print(f"\n  Models: {len(prompts)}", flush=True)
     for key, model in prompts.items():
+        if not isinstance(model, dict):
+            continue
         print(f"    • {model.get('label', key)}", flush=True)
     print(flush=True)
 
@@ -299,9 +309,9 @@ COMMANDS: dict[str, tuple[str, Any, str]] = {
     "save": ("", cmd_save, "Save current output to disk"),
     "list": ("ls", cmd_list, "List models or output files"),
     "ls": ("list", cmd_list, ""),
-    "quit": ("exit", lambda _: sys.exit(0), "Exit"),
-    "exit": ("quit", lambda _: sys.exit(0), ""),
-    "q": ("quit", lambda _: sys.exit(0), ""),
+    "quit": ("exit", lambda _: (_ for _ in ()).throw(_QuitSignal()), "Exit"),
+    "exit": ("quit", lambda _: (_ for _ in ()).throw(_QuitSignal()), ""),
+    "q": ("quit", lambda _: (_ for _ in ()).throw(_QuitSignal()), ""),
 }
 
 ALIASES: dict[str, str] = {}
@@ -365,6 +375,8 @@ def start_interactive(session_state: dict[str, Any], output_dir: str | None = No
         _canonical, func, _desc = entry
         try:
             func(cmd_args)
+        except _QuitSignal:
+            break
         except Exception as exc:
             print(f"  Command error: {exc}", flush=True)
 
