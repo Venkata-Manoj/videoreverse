@@ -6,38 +6,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from google import genai
-
 from src.blueprint_prompt import BLUEPRINT_SCHEMA, BLUEPRINT_SYSTEM_PROMPT
-from src.path_resolver import get_root
+from utils.key_rotation import get_key_manager
 from utils.retry import api_error_from_exception
 
 
-def _load_env_key() -> str | None:
-    env_path = os.path.join(get_root(), ".env")
-    try:
-        with open(env_path, encoding="utf-8") as f:
-            for line in f:
-                trimmed = line.strip()
-                if not trimmed or trimmed.startswith("#"):
-                    continue
-                eq = trimmed.find("=")
-                if eq == -1:
-                    continue
-                key = trimmed[:eq].strip()
-                val = trimmed[eq + 1 :].strip()
-                if key == "GEMINI_API_KEY":
-                    return val
-    except Exception:
-        pass
-    return os.environ.get("GEMINI_API_KEY")
-
-
-_api_key = _load_env_key()
-if not _api_key:
-    raise RuntimeError("GEMINI_API_KEY not found in .env or environment")
-
-_client = genai.Client(api_key=_api_key)
+def _get_client():
+    return get_key_manager().get_client()
 
 
 def _build_frame_context(timeline_frames: list[dict[str, Any]]) -> str:
@@ -207,10 +182,14 @@ async def build_blueprint(
 
     uploaded_file = None
     try:
-        uploaded_file = await _client.aio.files.upload(
-            file=normalized,
-            config={"mime_type": "video/mp4"},
-        )
+        try:
+            uploaded_file = await _get_client().aio.files.upload(
+                file=normalized,
+                config={"mime_type": "video/mp4"},
+            )
+        except Exception as exc:
+            get_key_manager().report_error(exc)
+            raise
         size_mb = uploaded_file.size_bytes / 1024 / 1024 if hasattr(uploaded_file, "size_bytes") else 0
         print(f"   → Uploaded: {uploaded_file.name} ({size_mb:.1f} MB)", flush=True)
 
@@ -221,7 +200,7 @@ async def build_blueprint(
             import asyncio
 
             await asyncio.sleep(1)
-            status = await _client.aio.files.get(name=uploaded_file.name)
+            status = await _get_client().aio.files.get(name=uploaded_file.name)
             if status.state == "ACTIVE":
                 print(f"   → File ready ({i + 1}s)", flush=True)
                 processing = True
@@ -340,7 +319,7 @@ Use these as additional hints for shot boundary detection."""
             raise RuntimeError("Gemini file is ACTIVE but has no uri — cannot run multimodal analysis")
 
         try:
-            response = await _client.aio.models.generate_content(
+            response = await _get_client().aio.models.generate_content(
                 model=gemini_model,
                 contents=[
                     types.Content(
@@ -360,6 +339,7 @@ Use these as additional hints for shot boundary detection."""
                 ),
             )
         except Exception as exc:
+            get_key_manager().report_error(exc)
             raise api_error_from_exception(exc) from exc
 
         blueprint = json.loads(response.text)
@@ -430,7 +410,7 @@ Use these as additional hints for shot boundary detection."""
     finally:
         if uploaded_file:
             try:
-                await _client.aio.files.delete(name=uploaded_file.name)
+                await _get_client().aio.files.delete(name=uploaded_file.name)
                 print("   → Cleaned up uploaded file from Gemini", flush=True)
             except Exception as e:
                 print(f"   → Cleanup warning: {e}", flush=True)
