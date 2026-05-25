@@ -9,6 +9,7 @@ from src.batch import run_batch_pipeline
 from src.pipeline import run_pipeline
 from utils.cli import detect_environment, parse_cli_args, print_help
 from utils.error_codes import VRError, VRErrorCode, explain_error, print_error_report
+from utils.interactive import start_interactive
 from utils.logger import error, info, set_log_level
 
 
@@ -33,7 +34,8 @@ def main() -> None:
         sys.exit(0)
 
     is_batch = "--batch" in args
-    if not is_batch and (len(args) == 0 or not args[0] or args[0].startswith("-")):
+    non_flag_args = [a for a in args if not a.startswith("-")]
+    if not is_batch and len(non_flag_args) == 0:
         print("Usage: python -m src.main <video_path_or_url> [options]", file=sys.stderr)
         print("       python -m src.main --batch <file_or_dir> [options]", file=sys.stderr)
         print("       python -m src.main --help  for all options", file=sys.stderr)
@@ -78,8 +80,19 @@ def main() -> None:
                 print("  DRY RUN — No files saved", flush=True)
                 print("═" * 60 + "\n", flush=True)
 
-        if options.get("log_level") != "quiet":
-            print(json.dumps(output, indent=2), flush=True)
+        if options.get("interactive") and not options.get("batch"):
+            if options.get("log_level") != "quiet":
+                print(json.dumps(output, indent=2), flush=True)
+            session = {
+                "blueprint": output.get("blueprint"),
+                "prompts": output.get("prompts"),
+                "video_metadata": output.get("video_metadata"),
+                "full_output": output,
+            }
+            start_interactive(session, options.get("output_dir"))
+        else:
+            if options.get("log_level") != "quiet":
+                print(json.dumps(output, indent=2), flush=True)
 
         sys.exit(0)
     except VRError as err:

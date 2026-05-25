@@ -100,6 +100,7 @@ Options:
   --video-type         Override auto-detected video type
   --no-cache           Disable blueprint caching
   --no-transcribe      Skip local Whisper transcription
+  --interactive, -i    Open REPL after pipeline for iterative prompt tuning
   --wsl                Force WSL path conversion
   --win                Force Windows path mode
   --gemini-model       Gemini model: gemini-2.5-flash, gemini-2.5-pro, gemini-2.0-flash

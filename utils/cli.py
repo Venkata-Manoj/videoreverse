@@ -51,6 +51,7 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
         "gemini_model": "gemini-2.5-flash",
         "batch": None,
         "parallel": 4,
+        "interactive": False,
     }
 
     i = 0
@@ -87,6 +88,9 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
         elif arg in ("--verbose", "-v"):
             result["verbose"] = True
             result["log_level"] = "debug"
+
+        elif arg in ("--interactive", "-i"):
+            result["interactive"] = True
 
         elif arg in ("--quiet", "-q"):
             result["quiet"] = True
@@ -206,6 +210,7 @@ Options:
   --sample-mode        Sampling strategy: full (default), first-n (clip first Ns), highlights (30s best moments)
                         Requires ffmpeg. Reduces API cost by 50-90% for long videos (~$0.001/s for Gemini)
   --video-type         Override auto-detected video type
+  --interactive, -i    Open REPL after pipeline completion for iterative prompt tuning
   --no-cache           Disable response caching
   --no-transcribe      Skip local Whisper transcription during ingest
   --wsl                Force WSL path conversion
