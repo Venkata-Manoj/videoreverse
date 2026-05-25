@@ -58,6 +58,10 @@ def main() -> None:
     if options.get("log_level"):
         set_log_level(options["log_level"])
 
+    profile = options.get("profile")
+    if profile:
+        info("main", f"Profile active: {profile}")
+
     info("main", "VideoReverse starting...")
     info("main", f"Environment: {detect_environment()}")
 

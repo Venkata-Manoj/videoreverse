@@ -23,6 +23,27 @@ SUPPORTED_FORMATS = ["json", "txt", "both", "none"]
 SUPPORTED_SAMPLE_MODES = ["full", "first-n", "highlights"]
 SUPPORTED_LOG_LEVELS = ["debug", "info", "warn", "error", "quiet"]
 SUPPORTED_GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"]
+SUPPORTED_PROFILES = ["fast", "quality", "cheap"]
+
+PROFILES: dict[str, dict[str, Any]] = {
+    "fast": {
+        "sample_mode": "first-n",
+        "max_duration": 15,
+        "gemini_model": "gemini-2.5-flash",
+        "description": "Quick preview — first 15s, Flash model",
+    },
+    "quality": {
+        "sample_mode": "full",
+        "gemini_model": "gemini-2.5-pro",
+        "description": "Best quality — full video, Pro model",
+    },
+    "cheap": {
+        "sample_mode": "highlights",
+        "max_duration": 10,
+        "no_cache": True,
+        "description": "Lowest cost — 10s highlights, no cache",
+    },
+}
 
 
 def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
@@ -52,7 +73,20 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
         "batch": None,
         "parallel": 4,
         "interactive": False,
+        "profile": None,
     }
+
+    # Pre-scan for --profile so profile defaults are set before explicit args override them
+    for i, arg in enumerate(args):
+        if arg == "--profile" and i + 1 < len(args):
+            val = args[i + 1]
+            if val in PROFILES:
+                result["profile"] = val
+                # Apply profile settings as base defaults
+                for k, v in PROFILES[val].items():
+                    if k != "description":
+                        result[k] = v
+            break
 
     i = 0
     while i < len(args):
@@ -168,6 +202,10 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
                 except ValueError:
                     pass
 
+        elif arg == "--profile":
+            i += 1
+            # Already applied in pre-scan; just consume the value
+
         else:
             if not arg.startswith("-") and result["video_path"] is None:
                 result["video_path"] = arg
@@ -218,12 +256,19 @@ Options:
   --gemini-model       Gemini model for analysis: {", ".join(SUPPORTED_GEMINI_MODELS)} (default: gemini-2.5-flash)
   --batch <file>       Process all videos listed in a file (one path per line)
   --parallel <N>       Max concurrent videos in batch mode (default: 4)
+  --profile <name>     Configuration preset: {", ".join(SUPPORTED_PROFILES)}
+                         fast:   first 15s, Flash model (quick preview)
+                         quality: full video, Pro model (best quality)
+                         cheap:  10s highlights, no cache (lowest cost)
+                         Explicit flags override profile settings.
 
 Troubleshooting:
   --explain-error <VR-CODE>   Print detailed troubleshooting steps for an error
 
 Examples:
   python -m src.pipeline /mnt/e/vidrev/test1.mp4
+  python -m src.pipeline /mnt/e/vidrev/test1.mp4 --profile fast
+  python -m src.pipeline /mnt/e/vidrev/test1.mp4 --profile quality --model runway_gen4_5
   python -m src.pipeline E:\\vidrev\\test1.mp4 --model runway_gen4_5,google_veo3_1
   python -m src.pipeline /mnt/e/vidrev/test1.mp4 --format txt --verbose
   python -m src.pipeline https://example.com/video.mp4 --dry-run
