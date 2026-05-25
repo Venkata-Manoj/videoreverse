@@ -49,6 +49,7 @@ utils/
 ├── video_type.py    ← Video type detection
 ├── cache.py         ← Blueprint caching
 ├── compare.py       ← Prompt comparison
+├── versioning.py    ← History save/load/list/rollback
 └── sampler.py       ← Smart frame sampling (ffmpeg clip + highlights)
 
 benchmark/
@@ -80,7 +81,8 @@ web/
 - `src/main.py` — CLI entry point. Use `python -m src.main --help` for options.
 - `src/pipeline.py` — Orchestrator. Accepts any video path/URL. Saves to `output_blueprints/`.
 - `src/synthesize.py` — Uses Gemini File API. Cleans up after analysis.
-- `config/prompt_templates.json` — Add new models here. Each entry: `label`, `template`, `supports_negative`, `max_duration`, `aspect_ratio_support`.
+- `config/prompt_templates.json` — Add new models here. Each entry: `label`, `template`, `supports_negative`, `max_duration`, `aspect_ratio_support`. Top-level `"template_version": "1.0"` for version tracking.
+- `utils/versioning.py` — History management. `save_history()` runs automatically after pipeline. `--rollback` loads a version's blueprint and re-compiles with current templates.
 
 ## CLI Options
 
@@ -106,6 +108,8 @@ Options:
   --gemini-model       Gemini model: gemini-2.5-flash, gemini-2.5-pro, gemini-2.0-flash
   --batch <file|dir>   Process all videos in a directory or file list
   --parallel <N>       Max concurrent videos in batch mode (default: 4)
+  --rollback <N>       Re-compile prompts from history version N (uses current templates)
+  --list-versions      List all saved history versions for the given video
   --compare <video>    Run pipeline on primary video and compare prompts/blueprint with this second video
   --help, -h           Show help
 ```
