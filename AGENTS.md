@@ -11,6 +11,27 @@ Video-to-prompt pipeline that deconstructs any video into a universal blueprint,
 - `GEMINI_API_KEY` in `.env` file — for blueprint synthesis via Gemini File API.
 - `openai-whisper` is installed from `requirements.txt` for local transcription during ingest.
 
+## Docker
+
+```bash
+# CLI pipeline
+docker compose run --rm vidrev src.main <video>
+# Web UI
+docker compose up -d vidrev-web
+# Open http://localhost:7860
+```
+
+## Migration
+
+```bash
+# Show pending migrations
+python scripts/migrate.py --list
+# Apply all pending
+python scripts/migrate.py
+# Apply up to a specific version
+python scripts/migrate.py --target 1
+```
+
 ## Commands
 
 - `python -m src.main <path_or_url>` — full pipeline: ingest → synthesize → compile → export

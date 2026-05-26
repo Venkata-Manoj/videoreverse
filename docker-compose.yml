@@ -1,8 +1,8 @@
-version: '3.8'
-
 services:
   vidrev:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: vidrev:latest
     container_name: vidrev
     environment:
@@ -12,8 +12,25 @@ services:
     volumes:
       - ./videos:/data/videos:ro
       - ./output_blueprints:/data/output
-    args:
-      - VIDEO_REV_UID=1000
-      - VIDEO_REV_GID=1000
+      - .cache:/app/.cache
+    command: ["src.main", "--help"]
     restart: unless-stopped
     network_mode: bridge
+
+  vidrev-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: vidrev:latest
+    container_name: vidrev-web
+    ports:
+      - "7860:7860"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - VIDEO_REV_OUTPUT_DIR=/data/output
+      - VIDEO_REV_WEB_HOST=0.0.0.0
+    volumes:
+      - .cache:/app/.cache
+      - ./output_blueprints:/data/output
+    command: ["web"]
+    restart: unless-stopped

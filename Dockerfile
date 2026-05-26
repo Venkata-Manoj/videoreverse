@@ -18,8 +18,9 @@ COPY config/ ./config/
 COPY utils/ ./utils/
 COPY tests/ ./tests/
 COPY scripts/ ./scripts/
+COPY web/ ./web/
 
 ENV PYTHONDONTWRITEBYTECODE=1
 
-ENTRYPOINT ["python", "-m", "src.main"]
-CMD ["--help"]
+ENTRYPOINT ["python", "-m"]
+CMD ["src.main", "--help"]
