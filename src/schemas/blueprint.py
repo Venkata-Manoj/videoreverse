@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import List, Optional, Literal
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
 
 
 class FrameReference(BaseModel):
@@ -59,7 +59,7 @@ class ChronologicalShot(BaseModel):
     )
     duration_seconds: float = Field(
         description="Approximate duration of this shot in seconds",
-        gt=0
+        ge=0
     )
     camera_direction: Optional[str] = Field(
         description="Camera movement and lens behavior (e.g., static tripod, slow push-in, handheld shake, smooth gimbal pan, drone orbit, zoom rack focus, whip pan, tilt down)",
@@ -89,6 +89,13 @@ class ChronologicalShot(BaseModel):
         description="Information about how this shot boundary was determined",
         default=None
     )
+
+    @field_validator('duration_seconds')
+    @classmethod
+    def _duration_must_be_positive(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError('duration_seconds must be greater than 0')
+        return v
 
     @model_validator(mode='after')
     def _validate_time_range(self) -> 'ChronologicalShot':
