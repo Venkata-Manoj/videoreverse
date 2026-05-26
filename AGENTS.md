@@ -61,11 +61,14 @@ benchmark/
 
 web/
 ├── app.py            ← Flask server (upload + SSE progress)
-├── jobs.py           ← Background job runner
+├── jobs.py           ← DB-backed JobManager (replaces in-memory JobStore)
+├── db.py             ← SQLite + WAL persistence layer (jobs + job_events tables)
 └── static/           ← HTML/CSS/JS UI (step timeline + results tabs)
 ```
 
 **Flow:** Video → [sampler] → ffmpeg (metadata + audio) → Gemini File API (multimodal analysis) → template compiler → dual output
+
+**Persistence:** Job state and events persisted to `.cache/videoreverse.db` (SQLite + WAL). Auto-cleanup of jobs older than 24h. Override with `VIDEO_REV_DB_PATH` env var.
 
 **Web UI Features:**
 
@@ -170,6 +173,7 @@ All errors use standardized **VR-XXX** codes. Use `--explain-error <CODE>` for t
 - **Pydantic V2** is now the core validation layer in `schemas/blueprint.py`. Used by `utils/validation.py` and `src/synthesize.py` for responseSchema generation.
 - **Remote URLs may return HTTP 403** — use local files for testing.
 - **Output persists** as dual format: `.json` + `.txt`
+- **Job state persists** in `.cache/videoreverse.db` (SQLite + WAL). Override path with `VIDEO_REV_DB_PATH`.
 
 ## Adding a New Model
 

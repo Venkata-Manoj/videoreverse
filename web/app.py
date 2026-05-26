@@ -17,7 +17,7 @@ from utils.cli import (
     detect_environment,
 )
 from utils.logger import info
-from web.jobs import JobStore
+from web.jobs import JobManager
 from web.utils.error_codes import VRLErrorCode, format_user_friendly_error, get_error_details
 
 load_dotenv()
@@ -28,7 +28,7 @@ UPLOAD_DIR = Path(os.environ.get("VIDEO_REV_WEB_UPLOAD_DIR", ".cache/web_uploads
 MAX_UPLOAD_MB = int(os.environ.get("VIDEO_REV_WEB_MAX_MB", "500"))
 
 app = Flask(__name__, static_folder=str(STATIC_DIR), static_url_path="/static")
-job_store = JobStore()
+job_manager = JobManager()
 
 
 def _ensure_upload_dir() -> Path:
@@ -143,10 +143,10 @@ def run_pipeline_job() -> Response:
         error_details = get_error_details(VRLErrorCode.GEMINI_API_KEY_MISSING)
         return jsonify({"error": format_user_friendly_error(VRLErrorCode.GEMINI_API_KEY_MISSING), "error_details": error_details}), 503
 
-    job = job_store.create()
-    job_store.start(job, options)
+    job_id = job_manager.create_job()
+    job_manager.start_pipeline(job_id, options)
 
-    return jsonify({"job_id": job.id, "filename": upload.filename})
+    return jsonify({"job_id": job_id, "filename": upload.filename})
 
 
 @app.post("/api/run-batch")
@@ -180,15 +180,15 @@ def run_batch_job() -> Response:
         return jsonify({"error": format_user_friendly_error(error)}), 400
 
     options = _build_options(video_paths[0], models)
-    job = job_store.create()
-    job_store.start_batch(job, video_paths, options)
-    return jsonify({"job_id": job.id, "filenames": [upload.filename for upload in uploads], "count": len(uploads)})
+    job_id = job_manager.create_job()
+    job_manager.start_batch(job_id, video_paths, options)
+    return jsonify({"job_id": job_id, "filenames": [upload.filename for upload in uploads], "count": len(uploads)})
 
 
 @app.get("/api/jobs/<job_id>/stream")
 def stream_job(job_id: str) -> Response:
     return Response(
-        job_store.iter_events(job_id),
+        job_manager.iter_events(job_id),
         mimetype="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -196,19 +196,19 @@ def stream_job(job_id: str) -> Response:
 
 @app.get("/api/jobs/<job_id>")
 def get_job(job_id: str) -> Response:
-    job = job_store.get(job_id)
+    job = job_manager.get_job(job_id)
     if not job:
         return jsonify({"error": "Job not found"}), 404
-    return jsonify({"id": job.id, "status": job.status, "error": job.error, "result": job.result, "files": job.files})
+    return jsonify({"id": job["id"], "status": job["status"], "error": job.get("error"), "result": job.get("result"), "files": job.get("files", {})})
 
 
 @app.get("/api/jobs/<job_id>/download/<artifact>")
 def download_artifact(job_id: str, artifact: str) -> Response:
-    job = job_store.get(job_id)
+    job = job_manager.get_job(job_id)
     if not job:
         return jsonify({"error": "Job not found"}), 404
 
-    artifact_path = job.files.get(artifact)
+    artifact_path = job.get("files", {}).get(artifact)
     if not artifact_path:
         return jsonify({"error": "Artifact not found"}), 404
 
@@ -323,7 +323,7 @@ def monitoring() -> Response:
         "output_size_bytes": output_size,
         "output_size_mb": round(output_size / (1024 * 1024), 2),
         "recent_runs": recent_runs,
-        "hub_jobs": len(job_store._jobs),
+        "hub_jobs": job_manager.count_jobs(),
         "last_updated": summary.get("last_updated", ""),
     })
 
