@@ -31,8 +31,8 @@ python -m src.main ./video.mp4 --dry-run --verbose
 
 ### Testing & Validation
 ```bash
-# Run all tests
-python -m src.run_tests
+# Run all unit tests
+python -m pytest tests/unit/
 
 # Run linter
 python scripts/lint.py
@@ -41,7 +41,7 @@ python scripts/lint.py
 python scripts/validate.py
 
 # Run full CI pipeline locally
-python scripts/lint.py && python -m src.run_tests
+python scripts/lint.py && python -m pytest tests/unit/
 ```
 
 ### Docker Usage
@@ -64,9 +64,8 @@ docker run -v ./videos:/data/videos -e GEMINI_API_KEY=your_key vidrev ./data/vid
 
 ### Key Components
 - **CLI Entry Point** (`src/main.py`) - Argument parsing and pipeline orchestration
-- **Pipeline Orchestrator** (`src/pipeline.py`) - Manages retry logic, fallback mechanisms, and step timing
+- **Pipeline Orchestrator** (`src/pipeline.py`) - Manages retry logic and step timing
 - **Universal Blueprint Schema** - Structured representation with global aesthetics and chronological shots
-- **Fallback System** - Graceful degradation when Gemini API fails
 - **Video Type Detection** - Automatic detection of video content type (animation, aerial, vlog, etc.)
 
 ### Configuration
@@ -99,7 +98,6 @@ videoreverse/
 - The project includes comprehensive error handling with helpful messages for common issues (missing ffmpeg, invalid API key, file not found)
 - Supports dry-run mode for testing without saving files
 - Implements retry mechanism for API rate limits and transient failures
-- Includes fallback blueprint generation when primary synthesis fails
 
 ## 🧪 Testing Guidelines
 - Test videos are referenced in README (test1.mp4 for CGI/Animation)

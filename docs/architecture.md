@@ -11,8 +11,8 @@ VideoReverse is a modular pipeline that deconstructs videos into production blue
 │  Video  │───▶│  Ingest  │───▶│ Synthesize │───▶│ Compile  │───▶│ Export │
 └─────────┘    └──────────┘    └───────────┘    └──────────┘    └────────┘
                      │                 │               │              │
-                  ffmpeg           Gemini           config       .json
-                  metadata          File API      templates     .txt
+                   ffmpeg           Gemini           config       .json
+                   metadata          File API      templates     .txt
 ```
 
 ## Modules
@@ -49,11 +49,10 @@ Formats output for human consumption:
 |--------|---------|
 | `utils/validation.py` | Blueprint JSON validation |
 | `utils/retry.py` | Exponential backoff for API calls |
-| `utils/fallback.py` | Graceful degradation on failure |
 | `utils/logger.py` | Structured logging + error tracking |
 | `utils/cli.py` | CLI argument parsing |
 | `utils/cache.py` | Blueprint caching |
-| `utils/compare.py` | Prompt diff tool |
+| `utils/sampler.py` | Smart frame sampling |
 
 ## Data Flow
 
@@ -79,6 +78,5 @@ Formats output for human consumption:
 ## Error Handling
 
 1. **Retry with backoff** — 3 attempts, exponential delay
-2. **Fallback mode** — Text-only prompts from metadata
-3. **Validation** — Sanitize malformed JSON
-4. **Logging** — Errors persisted to `output_blueprints/errors.log`
+2. **Validation** — Sanitize malformed JSON
+3. **Logging** — Errors persisted to `output_blueprints/errors.log`

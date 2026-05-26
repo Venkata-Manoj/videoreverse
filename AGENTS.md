@@ -35,14 +35,14 @@ python scripts/migrate.py --target 1
 ## Commands
 
 - `python -m src.main <path_or_url>` — full pipeline: ingest → synthesize → compile → export
-- `python -m src.main --batch <dir_or_file>` — batch process multiple videos
 - `python -m src.ingest <path_or_url>` — standalone ingestion (metadata + frames)
-- `python -m benchmark` — run prompt quality benchmarks
-- `python -m web` — local Web UI for non-CLI testing (upload queue, downloads, prompt copy)
+- `python -m web` — local Web UI for testing (upload queue, downloads, prompt copy)
 - `vidrev-web` — same as `python -m web` (after editable install)
 - Paths auto-convert: Windows `E:\vidrev\test.mp4` → WSL `/mnt/e/vidrev/test.mp4`
 
 - `python scripts/verify_output.py <video_name>` - verify latest saved JSON/TXT output without rerunning pipeline
+- `python scripts/lint.py` — Run linter
+- `python scripts/validate.py` — Validate outputs
 
 ## Architecture
 
@@ -50,7 +50,6 @@ python scripts/migrate.py --target 1
 src/
 ├── main.py             ← CLI entry point
 ├── pipeline.py         ← Main orchestrator (chains all modules)
-├── batch.py            ← Multi-video batch processor (parallel + resume)
 ├── ingest.py           ← ffmpeg → metadata, frames, audio mood
 ├── synthesize.py       ← Gemini File API + responseSchema → blueprint
 ├── compile.py          ← Config-driven prompt compiler
@@ -65,24 +64,17 @@ schemas/
 └── blueprint.py   ← Pydantic V2 models: UniversalBlueprint, ChronologicalShot, GlobalAesthetic, etc.
 
 utils/
-├── validation.py    ← Blueprint validator (Pydantic V2 backed, with legacy fallback)
+├── validation.py    ← Blueprint validator (Pydantic V2 backed)
 ├── retry.py         ← Retry logic + exponential backoff
-├── fallback.py      ← Graceful degradation
 ├── logger.py        ← Error logging
 ├── cli.py           ← CLI argument parser
 ├── video_type.py    ← Video type detection
 ├── cache.py         ← Blueprint caching
-├── compare.py       ← Prompt comparison
-├── versioning.py    ← History save/load/list/rollback
 └── sampler.py       ← Smart frame sampling (ffmpeg clip + highlights)
-
-benchmark/
-├── benchmark.py      ← Prompt quality benchmark runner
-└── metrics.py        ← Quality metrics (shot count, style, action, etc.)
 
 web/
 ├── app.py            ← Flask server (upload + SSE progress)
-├── jobs.py           ← DB-backed JobManager (replaces in-memory JobStore)
+├── jobs.py           ← DB-backed JobManager
 ├── db.py             ← SQLite + WAL persistence layer (jobs + job_events tables)
 └── static/           ← HTML/CSS/JS UI (step timeline + results tabs)
 ```
@@ -94,12 +86,7 @@ web/
 **Web UI Features:**
 
 - **Job History** — Previous jobs saved to localStorage, re-run with same settings
-- **Comparison Tool** — Side-by-side blueprint/prompt diff of any two jobs
 - **Template Editor** — In-browser template customization with save back to disk
-- **Monitoring Dashboard** — API usage stats, timing metrics, error/fallback rates
-- **Configuration Profiles** — Fast/Quality/Cheap presets with custom save/load
-- **Accessibility** — Skip links, ARIA labels, keyboard navigation, focus-visible outlines
-- **Web Worker** — Offloads JSON formatting from main thread
 
 **Universal Schema:** `{ global_aesthetic, chronological_shots[] }` — enforced via `responseSchema` generated dynamically from Pydantic V2 `UniversalBlueprint.model_json_schema()`
 
@@ -110,7 +97,6 @@ web/
 - `src/synthesize.py` — Uses Gemini File API. Cleans up after analysis.
 - `schemas/blueprint.py` — Pydantic V2 models for UniversalBlueprint, used by validation and responseSchema generation.
 - `config/prompt_templates.json` — Add new models here. Each entry: `label`, `template` (placeholders: `{camera}`, `{framing}`, `{style}`, `{action}`, `{environment}`, `{lighting}`, `{color_grading}`, `{duration}`, `{negative}`, `{aspect_ratio}`), `supports_negative`, `max_duration`, `aspect_ratio_support`, `enhancement_rules`.
-- `utils/versioning.py` — History management. `save_history()` runs automatically after pipeline. `--rollback` loads a version's blueprint and re-compiles with current templates.
 
 ## CLI Options
 
@@ -124,21 +110,15 @@ Options:
   --verbose, -v        Debug logging
   --dry-run            Output without saving
   --force, -F          Skip failed steps
-  --max-retries, -r    API retry attempts (default: 3)
+  --max-retries, -r    API retry attempts (default: 5)
   --max-duration       Pre-clip video to first N seconds
   --sample-mode        Sampling: full, first-n, highlights (requires ffmpeg)
   --video-type         Override auto-detected video type
   --no-cache           Disable blueprint caching
   --no-transcribe      Skip local Whisper transcription
-  --interactive, -i    Open REPL after pipeline for iterative prompt tuning
   --wsl                Force WSL path conversion
   --win                Force Windows path mode
   --gemini-model       Gemini model: gemini-2.5-flash, gemini-2.5-pro, gemini-2.0-flash
-  --batch <file|dir>   Process all videos in a directory or file list
-  --parallel <N>       Max concurrent videos in batch mode (default: 4)
-  --rollback <N>       Re-compile prompts from history version N (uses current templates)
-  --list-versions      List all saved history versions for the given video
-  --compare <video>    Run pipeline on primary video and compare prompts/blueprint with this second video
   --help, -h           Show help
 ```
 
@@ -149,8 +129,6 @@ Options:
 - Cost estimate: ~$0.001/second for Gemini 2.5 Flash
 
 ## Error Codes
-
-All errors use standardized **VR-XXX** codes. Use `--explain-error <CODE>` for troubleshooting.
 
 | Code | Description |
 |------|-------------|
@@ -173,17 +151,14 @@ All errors use standardized **VR-XXX** codes. Use `--explain-error <CODE>` for t
 | VR-205 | Gemini service down |
 | VR-301 | Prompt compilation failed |
 | VR-302 | Blueprint validation failed |
-| VR-303 | Fallback activated |
 | VR-402 | Output write failed |
 | VR-499 | Internal error |
 
 ## Error Handling
 
 1. **Retry with backoff** — 3 attempts, exponential delay
-2. **Fallback mode** — Text-only prompts from metadata if Gemini fails
-3. **Validation** — Sanitize malformed JSON automatically
-4. **Logging** — Errors persisted to `output_blueprints/errors.log`
-5. **Error Codes** — All errors have standardized VR-XXX codes with troubleshooting steps
+2. **Validation** — Sanitize malformed JSON automatically
+3. **Logging** — Errors persisted to `output_blueprints/errors.log`
 
 ## Gotchas
 
@@ -191,7 +166,7 @@ All errors use standardized **VR-XXX** codes. Use `--explain-error <CODE>` for t
 - **ffmpeg output can be large** — subprocess handles large output automatically.
 - **Gemini File API uploads full video** — large files cost more tokens.
 - **Uploaded files deleted** after blueprint generation.
-- **Pydantic V2** is now the core validation layer in `schemas/blueprint.py`. Used by `utils/validation.py` and `src/synthesize.py` for responseSchema generation.
+- **Pydantic V2** is the core validation layer in `schemas/blueprint.py`. Used by `utils/validation.py` and `src/synthesize.py` for responseSchema generation.
 - **Remote URLs may return HTTP 403** — use local files for testing.
 - **Output persists** as dual format: `.json` + `.txt`
 - **Job state persists** in `.cache/videoreverse.db` (SQLite + WAL). Override path with `VIDEO_REV_DB_PATH`.
@@ -201,31 +176,10 @@ All errors use standardized **VR-XXX** codes. Use `--explain-error <CODE>` for t
 1. Edit `config/prompt_templates.json` with: `label`, `template` (placeholders: `{camera}`, `{framing}`, `{style}`, `{action}`, `{environment}`, `{lighting}`, `{color_grading}`, `{duration}`, `{negative}`, `{aspect_ratio}`), `supports_negative`, `max_duration`, `aspect_ratio_support`, `enhancement_rules`.
 2. That's it. `compile.py` reads the config dynamically.
 
-**Enhancement Rules Structure:**
-
-```json
-{
-  "enhancement_rules": {
-    "preferred_order": ["camera", "framing", "style", "action", "environment", "lighting"],
-    "keyword_injection": {
-      "camera_keywords": ["35mm lens", "50mm lens", "f/2.8"],
-      "style_keywords": ["cinematic", "photorealistic"],
-      "action_keywords": ["smooth motion", "natural physics"]
-    },
-    "prompt_guidelines": {
-      "max_length": 300,
-      "sentence_style": "concise",
-      "avoid_adjectives": ["stunning", "breathtaking"],
-      "prefer_specifics": ["50mm lens", "f/2.8", "shallow depth of field"]
-    }
-  }
-}
-```
-
 ## Testing
 
 ```bash
-python -m src.run_tests        # Run full test suite
+python -m pytest tests/unit/   # Run all unit tests
 python scripts/lint.py         # Run linter
 python scripts/validate.py     # Validate outputs
 ```
@@ -241,11 +195,11 @@ Keep diverse test videos:
 
 ## Do's
 
-- always commit the project when a new frature is added and tested successfully without explicitly mentioned by user
+- always commit the project when a new feature is added and tested successfully without explicitly mentioned by user
 - always ask user to commit this feature/something and get it tested before moving forward
 - make the commit message very clear and concise
 - when you are done with all the tasks user mentioned then ask user to commit the changes and move forward
-- always check TODO.md for any pending tasks and remain user about it if there are any.
+- always check TODO.md for any pending tasks and remind user about it if there are any.
 - always test the code and get it tested before moving forward.
 
 ## Update/Enhance
