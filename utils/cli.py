@@ -25,27 +25,6 @@ SUPPORTED_FORMATS = ["json", "txt", "both", "none"]
 SUPPORTED_SAMPLE_MODES = ["full", "first-n", "highlights"]
 SUPPORTED_LOG_LEVELS = ["debug", "info", "warn", "error", "quiet"]
 SUPPORTED_GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"]
-SUPPORTED_PROFILES = ["fast", "quality", "cheap"]
-
-PROFILES: dict[str, dict[str, Any]] = {
-    "fast": {
-        "sample_mode": "first-n",
-        "max_duration": 15,
-        "gemini_model": "gemini-2.5-flash",
-        "description": "Quick preview — first 15s, Flash model",
-    },
-    "quality": {
-        "sample_mode": "full",
-        "gemini_model": "gemini-2.5-pro",
-        "description": "Best quality — full video, Pro model",
-    },
-    "cheap": {
-        "sample_mode": "highlights",
-        "max_duration": 10,
-        "no_cache": True,
-        "description": "Lowest cost — 10s highlights, no cache",
-    },
-}
 
 
 def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
@@ -72,26 +51,7 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
         "no_transcribe": False,
         "wsl_mode": None,
         "gemini_model": "gemini-2.5-flash",
-        "batch": None,
-        "parallel": 4,
-        "interactive": False,
-        "profile": None,
-        "compare_video": None,
-        "rollback_version": None,
-        "list_versions": None,
     }
-
-    # Pre-scan for --profile so profile defaults are set before explicit args override them
-    for i, arg in enumerate(args):
-        if arg == "--profile" and i + 1 < len(args):
-            val = args[i + 1]
-            if val in PROFILES:
-                result["profile"] = val
-                # Apply profile settings as base defaults
-                for k, v in PROFILES[val].items():
-                    if k != "description":
-                        result[k] = v
-            break
 
     i = 0
     while i < len(args):
@@ -127,9 +87,6 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
         elif arg in ("--verbose", "-v"):
             result["verbose"] = True
             result["log_level"] = "debug"
-
-        elif arg in ("--interactive", "-i"):
-            result["interactive"] = True
 
         elif arg in ("--quiet", "-q"):
             result["quiet"] = True
@@ -192,42 +149,6 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
             elif i < len(args):
                 raise ValueError(f'Invalid Gemini model "{args[i]}". Use: {", ".join(SUPPORTED_GEMINI_MODELS)}')
 
-        elif arg == "--batch":
-            i += 1
-            if i < len(args) and args[i]:
-                result["batch"] = args[i]
-
-        elif arg == "--parallel":
-            i += 1
-            if i < len(args):
-                try:
-                    parallel = int(args[i])
-                    if parallel > 0:
-                        result["parallel"] = parallel
-                except ValueError:
-                    pass
-
-        elif arg == "--profile":
-            i += 1
-            # Already applied in pre-scan; just consume the value
-
-        elif arg == "--compare":
-            i += 1
-            if i < len(args) and args[i]:
-                result["compare_video"] = args[i]
-
-        elif arg == "--rollback":
-            i += 1
-            if i < len(args) and args[i]:
-                try:
-                    result["rollback_version"] = int(args[i])
-                except ValueError:
-                    pass
-
-        elif arg == "--list-versions":
-            # The video path will be consumed by the non-flag fallback
-            result["list_versions"] = True
-
         else:
             if not arg.startswith("-") and result["video_path"] is None:
                 result["video_path"] = arg
@@ -254,8 +175,6 @@ Arguments:
 
 Options:
   --help, -h           Show this help message
-  --explain-error      Print troubleshooting guide for an error code
-                        Usage: --explain-error VR-101
   --model, -m          Generate prompts only for specific models (comma-separated)
                         Options: {", ".join(SUPPORTED_MODELS)}
   --output-dir, -o      Custom output directory (default: {DEFAULT_OUTPUT_DIR})
@@ -265,42 +184,22 @@ Options:
   --quiet, -q          Suppress console output (alias for --log-level quiet)
   --dry-run            Output prompts without saving files
   --force, -F          Skip failed steps and use cached results
-  --max-retries, -r    Max retry attempts for API calls (default: 3)
+  --max-retries, -r    Max retry attempts for API calls (default: 5)
   --max-duration       Pre-clip video to first N seconds
   --sample-mode        Sampling strategy: full (default), first-n (clip first Ns), highlights (30s best moments)
                         Requires ffmpeg. Reduces API cost by 50-90% for long videos (~$0.001/s for Gemini)
   --video-type         Override auto-detected video type
-  --interactive, -i    Open REPL after pipeline completion for iterative prompt tuning
   --no-cache           Disable response caching
   --no-transcribe      Skip local Whisper transcription during ingest
   --wsl                Force WSL path conversion
   --win                Force Windows path mode
   --gemini-model       Gemini model for analysis: {", ".join(SUPPORTED_GEMINI_MODELS)} (default: gemini-2.5-flash)
-  --batch <file>       Process all videos listed in a file (one path per line)
-  --parallel <N>       Max concurrent videos in batch mode (default: 4)
-  --profile <name>     Configuration preset: {", ".join(SUPPORTED_PROFILES)}
-                         fast:   first 15s, Flash model (quick preview)
-                         quality: full video, Pro model (best quality)
-                         cheap:  10s highlights, no cache (lowest cost)
-                         Explicit flags override profile settings.
-  --compare <video>    Run pipeline on primary video and compare against this second video
-  --rollback <N>       Re-compile prompts from history version N (uses current templates)
-  --list-versions      List all saved history versions for the given video
-
-Troubleshooting:
-  --explain-error <VR-CODE>   Print detailed troubleshooting steps for an error
 
 Examples:
   python -m src.main /mnt/e/vidrev/test1.mp4
-  python -m src.main /mnt/e/vidrev/test1.mp4 --profile fast
-  python -m src.main /mnt/e/vidrev/test1.mp4 --profile quality --model runway_gen4_5
   python -m src.main E:\\vidrev\\test1.mp4 --model runway_gen4_5,google_veo3_1
   python -m src.main /mnt/e/vidrev/test1.mp4 --format txt --verbose
   python -m src.main https://example.com/video.mp4 --dry-run
-  python -m src.main --explain-error VR-101
-  python -m src.main /mnt/e/vidrev/test1.mp4 --compare /mnt/e/vidrev/test_drone.mp4
-  python -m src.main /mnt/e/vidrev/test1.mp4 --list-versions
-  python -m src.main /mnt/e/vidrev/test1.mp4 --rollback 2
 """
     print(help_text)
 

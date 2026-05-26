@@ -6,14 +6,20 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from google import genai
+
 from src.blueprint_prompt import BLUEPRINT_SYSTEM_PROMPT
 from src.schemas.blueprint import UniversalBlueprint
-from utils.key_rotation import get_key_manager
 from utils.retry import api_error_from_exception
 
 
 def _get_client():
-    return get_key_manager().get_client()
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        raise ValueError(
+            "GEMINI_API_KEY environment variable not set"
+        )
+    return genai.Client(api_key=key)
 
 
 def _build_frame_context(timeline_frames: list[dict[str, Any]]) -> str:
@@ -174,7 +180,6 @@ async def build_blueprint(
                 config={"mime_type": "video/mp4"},
             )
         except Exception as exc:
-            get_key_manager().report_error(exc)
             raise
         size_mb = uploaded_file.size_bytes / 1024 / 1024 if hasattr(uploaded_file, "size_bytes") else 0
         print(f"   → Uploaded: {uploaded_file.name} ({size_mb:.1f} MB)", flush=True)
@@ -325,7 +330,6 @@ Use these as additional hints for shot boundary detection."""
                 ),
             )
         except Exception as exc:
-            get_key_manager().report_error(exc)
             raise api_error_from_exception(exc) from exc
 
         blueprint = json.loads(response.text)

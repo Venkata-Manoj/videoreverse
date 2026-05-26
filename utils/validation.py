@@ -27,57 +27,6 @@ def validate_blueprint(blueprint: dict[str, Any]) -> bool:
         raise BlueprintValidationError("Validation failed:\n  - " + "\n  - ".join(errors)) from e
 
 
-def _old_sanitize_blueprint(blueprint: dict[str, Any] | None) -> dict[str, Any] | None:
-    if not blueprint:
-        return None
-
-    aesthetic = blueprint.get("global_aesthetic") or {}
-    sanitized = {
-        "global_aesthetic": {
-            "art_style": aesthetic.get("art_style") or "unknown",
-            "color_grading": aesthetic.get("color_grading") or "unknown",
-            "lighting_setup": aesthetic.get("lighting_setup") or "unknown",
-        },
-        "chronological_shots": [],
-    }
-
-    for shot in blueprint.get("chronological_shots") or []:
-        sanitized_shot = {
-            "shot_index": shot.get("shot_index") if isinstance(shot.get("shot_index"), (int, float)) else 0,
-            "start_time_seconds": shot.get("start_time_seconds")
-            if isinstance(shot.get("start_time_seconds"), (int, float))
-            else 0,
-            "end_time_seconds": shot.get("end_time_seconds")
-            if isinstance(shot.get("end_time_seconds"), (int, float))
-            else 5,
-            "duration_seconds": shot.get("duration_seconds")
-            if isinstance(shot.get("duration_seconds"), (int, float)) and shot.get("duration_seconds", 0) > 0
-            else 5,
-            "camera_direction": shot.get("camera_direction") or "static camera",
-            "framing_type": shot.get("framing_type") or "medium shot",
-            "action_and_motion": shot.get("action_and_motion") or "no action",
-            "environment_context": shot.get("environment_context") or "unknown environment",
-            "negative_elements": shot.get("negative_elements")
-            if isinstance(shot.get("negative_elements"), list)
-            else [],
-            "frame_references": shot.get("frame_references") if isinstance(shot.get("frame_references"), list)
-            else [],
-        }
-
-        if shot.get("shot_boundaries") and isinstance(shot["shot_boundaries"], dict):
-            sanitized_shot["shot_boundaries"] = {
-                "detected_by": shot["shot_boundaries"].get("detected_by") or "manual",
-                "confidence": shot["shot_boundaries"].get("confidence") or "medium",
-                "correlated_frames": shot["shot_boundaries"].get("correlated_frames")
-                if isinstance(shot["shot_boundaries"].get("correlated_frames"), list)
-                else [],
-            }
-
-        sanitized["chronological_shots"].append(sanitized_shot)
-
-    return sanitized
-
-
 def sanitize_blueprint(blueprint: dict[str, Any] | None) -> dict[str, Any] | None:
     if not blueprint or not isinstance(blueprint, dict):
         return None
@@ -85,7 +34,7 @@ def sanitize_blueprint(blueprint: dict[str, Any] | None) -> dict[str, Any] | Non
         blueprint_obj = UniversalBlueprint(**blueprint)
         return blueprint_obj.model_dump()
     except (ValidationError, TypeError):
-        return _old_sanitize_blueprint(blueprint)
+        return None
 
 
 def validate_video_metadata(metadata: dict[str, Any] | None) -> bool:

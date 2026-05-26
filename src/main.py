@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from __future__ import annotations
 
 import asyncio
@@ -7,14 +6,10 @@ import sys
 
 import os
 
-from src.batch import run_batch_pipeline
 from src.pipeline import run_pipeline
 from utils.cli import detect_environment, parse_cli_args, print_help
-from utils.compare import compare_outputs, print_comparison
-from utils.error_codes import VRError, VRErrorCode, explain_error, print_error_report
-from utils.interactive import start_interactive
+from utils.error_codes import VRError
 from utils.logger import error, info, set_log_level
-from utils.versioning import list_versions, load_history, save_history
 
 
 def main() -> None:
@@ -24,33 +19,15 @@ def main() -> None:
         print_help()
         sys.exit(0)
 
-    if "--explain-error" in args:
-        idx = args.index("--explain-error")
-        if idx + 1 < len(args) and args[idx + 1]:
-            code = args[idx + 1].upper()
-            print(explain_error(code))
-        else:
-            print("Usage: --explain-error <VR-CODE>")
-            print("Example: --explain-error VR-101")
-            print("\nCommon error codes:")
-            for vrc in VRErrorCode:
-                print(f"  {vrc.code} — {vrc.message}")
-        sys.exit(0)
-
-    is_batch = "--batch" in args
     non_flag_args = [a for a in args if not a.startswith("-")]
-    if not is_batch and len(non_flag_args) == 0:
+    if len(non_flag_args) == 0:
         print("Usage: python -m src.main <video_path_or_url> [options]", file=sys.stderr)
-        print("       python -m src.main --batch <file_or_dir> [options]", file=sys.stderr)
         print("       python -m src.main --help  for all options", file=sys.stderr)
-        print("       python -m src.main --explain-error <VR-CODE> for troubleshooting", file=sys.stderr)
         print("", file=sys.stderr)
         print("Examples:", file=sys.stderr)
         print("  python -m src.main ./video.mp4", file=sys.stderr)
         print("  python -m src.main E:\\vidrev\\video.mp4", file=sys.stderr)
         print("  python -m src.main https://example.com/video.mp4", file=sys.stderr)
-        print("  python -m src.main --batch ./videos/", file=sys.stderr)
-        print("  python -m src.main --batch video_list.txt", file=sys.stderr)
         sys.exit(1)
 
     options = parse_cli_args(args)
@@ -62,118 +39,25 @@ def main() -> None:
     if options.get("log_level"):
         set_log_level(options["log_level"])
 
-    profile = options.get("profile")
-    if profile:
-        info("main", f"Profile active: {profile}")
-
     info("main", "VideoReverse starting...")
     info("main", f"Environment: {detect_environment()}")
 
     try:
-        if options.get("batch"):
-            info("main", f"Batch mode: {options['batch']}")
-            output = asyncio.run(
-                run_batch_pipeline(
-                    options["batch"],
-                    options,
-                    max_parallel=options.get("parallel", 4),
-                )
-            )
-            sys.exit(0)
+        info("main", f"Video path: {options['video_path']}")
+        output = asyncio.run(run_pipeline(options))
 
-        video_path = options.get("video_path", "")
-
-        if options.get("list_versions"):
-            output_dir = options.get("output_dir") or "output_blueprints"
-            versions = list_versions(video_path, output_dir)
-            if not versions:
-                print(f"No history versions found for {video_path}", flush=True)
-            else:
-                print(f"\n  History versions for {video_path}:\n", flush=True)
-                for v in versions:
-                    print(f"  v{v['version']}  |  template: {v['template_version']}  |  {v['saved_at']}  |  shots: {v['shots']}  |  models: {len(v['models'])}", flush=True)
-                print(flush=True)
-            sys.exit(0)
-
-        if options.get("rollback_version"):
-            output_dir = options.get("output_dir") or "output_blueprints"
-            version = options["rollback_version"]
-            info("main", f"Rolling back to version {version}")
-            entry = load_history(video_path, output_dir, version)
-            if entry is None:
-                print(f"Version v{version} not found for {video_path}", file=sys.stderr, flush=True)
-                sys.exit(1)
-            blueprint = entry.get("blueprint")
-            if not blueprint:
-                print(f"Version v{version} has no blueprint data", file=sys.stderr, flush=True)
-                sys.exit(1)
-            from src.compile import compile_prompts
-            prompts = compile_prompts(blueprint, entry.get("video_metadata"))
-            output = {
-                "video_metadata": entry.get("video_metadata", {}),
-                "blueprint": blueprint,
-                "prompts": prompts,
-                "_meta": {
-                    "rollback_from_version": version,
-                    "template_version": "1.0",
-                    "history_saved_at": None,
-                },
-            }
-            new_v = save_history(output, video_path, output_dir)
-            info("main", f"Rollback complete — saved as v{new_v}")
+        if options.get("log_level") != "quiet":
             print(json.dumps(output, indent=2), flush=True)
-            sys.exit(0)
-
-        else:
-            info("main", f"Video path: {options['video_path']}")
-            output = asyncio.run(run_pipeline(options))
-
-            if options.get("dry_run") and options.get("log_level") != "quiet":
-                print("\n" + "═" * 60, flush=True)
-                print("  DRY RUN — No files saved", flush=True)
-                print("═" * 60 + "\n", flush=True)
-
-        if options.get("compare_video"):
-            info("main", f"Compare mode: comparing with {options['compare_video']}")
-            compare_opts = dict(options)
-            compare_opts["video_path"] = compare_opts["compare_video"]
-            compare_output = asyncio.run(run_pipeline(compare_opts))
-            result = compare_outputs(output, compare_output)
-            if options.get("log_level") != "quiet":
-                print_comparison(result)
-            output_dir = options.get("output_dir") or "output_blueprints"
-            os.makedirs(output_dir, exist_ok=True)
-            comp_path = os.path.join(output_dir, f"compare_{options.get('video_path', 'unknown')}.json")
-            with open(comp_path, "w", encoding="utf-8") as f:
-                json.dump(result, f, indent=2)
-            info("main", f"Comparison saved to {comp_path}")
-            sys.exit(0)
-
-        if options.get("interactive") and not options.get("batch"):
-            if options.get("log_level") != "quiet":
-                print(json.dumps(output, indent=2), flush=True)
-            session = {
-                "blueprint": output.get("blueprint"),
-                "prompts": output.get("prompts"),
-                "video_metadata": output.get("video_metadata"),
-                "full_output": output,
-            }
-            start_interactive(session, options.get("output_dir"))
-        else:
-            if options.get("log_level") != "quiet":
-                print(json.dumps(output, indent=2), flush=True)
 
         sys.exit(0)
     except VRError as err:
         error("main", f"[{err.code}] {err.message}")
         if err.detail:
             error("main", f"  Detail: {err.detail}")
-        print_error_report(err.code_obj, err.detail)
         sys.exit(1)
     except Exception as err:
         error("main", f"Fatal error: {err}")
-        print(f"\n  ❌ Unexpected error: {err}", flush=True)
-        print(f"  Run with --explain-error VR-499 for troubleshooting\n", flush=True)
+        print(f"\n  Error: {err}", flush=True)
         sys.exit(1)
 
 

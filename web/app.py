@@ -18,7 +18,6 @@ from utils.cli import (
 )
 from utils.logger import info
 from web.jobs import JobManager
-from web.utils.error_codes import VRLErrorCode, format_user_friendly_error, get_error_details
 
 load_dotenv()
 
@@ -46,7 +45,7 @@ def _save_upload(upload) -> str:
     size_mb = os.path.getsize(video_path) / (1024 * 1024)
     if size_mb > MAX_UPLOAD_MB:
         os.unlink(video_path)
-        raise ValueError("file_too_large")
+        return "file_too_large"
 
     return video_path
 
@@ -64,7 +63,6 @@ def _build_options(video_path: str, models: list[str] | None) -> dict[str, objec
         "format": request.form.get("format") or "both",
         "dry_run": request.form.get("dry_run") == "true",
         "max_retries": int(request.form.get("max_retries") or 5),
-        "use_fallback": request.form.get("use_fallback", "true") == "true",
         "max_duration": max_duration,
         "sample_mode": request.form.get("sample_mode") or "full",
         "gemini_model": request.form.get("gemini_model") or "gemini-2.5-flash",
@@ -114,19 +112,19 @@ def config() -> Response:
 @app.post("/api/run")
 def run_pipeline_job() -> Response:
     if "video" not in request.files:
-        error = VRLErrorCode.NO_VIDEO_FILE
-        return jsonify({"error": format_user_friendly_error(error)}), 400
+        return jsonify({"error": "No video file provided"}), 400
 
     upload = request.files["video"]
     if not upload.filename:
-        error = VRLErrorCode.NO_VIDEO_FILE
-        return jsonify({"error": format_user_friendly_error(error)}), 400
+        return jsonify({"error": "No video file provided"}), 400
 
     try:
         video_path = _save_upload(upload)
     except ValueError:
-        error = VRLErrorCode.FILE_TOO_LARGE
-        return jsonify({"error": format_user_friendly_error(error)}), 400
+        return jsonify({"error": "File upload failed"}), 400
+
+    if video_path == "file_too_large":
+        return jsonify({"error": f"File exceeds {MAX_UPLOAD_MB}MB limit"}), 400
 
     models_raw = request.form.get("models", "")
     models = [m.strip() for m in models_raw.split(",") if m.strip()] or None
@@ -135,13 +133,10 @@ def run_pipeline_job() -> Response:
     invalid = [m for m in (models or []) if m not in SUPPORTED_MODELS]
     if invalid:
         os.unlink(video_path)
-        error_details = get_error_details(VRLErrorCode.UNSUPPORTED_FORMAT)
-        error_details["details"] = f"Unsupported models: {', '.join(invalid)}"
-        return jsonify({"error": format_user_friendly_error(VRLErrorCode.UNSUPPORTED_FORMAT), "error_details": error_details}), 400
+        return jsonify({"error": f"Unsupported models: {', '.join(invalid)}"}), 400
 
     if not os.environ.get("GEMINI_API_KEY"):
-        error_details = get_error_details(VRLErrorCode.GEMINI_API_KEY_MISSING)
-        return jsonify({"error": format_user_friendly_error(VRLErrorCode.GEMINI_API_KEY_MISSING), "error_details": error_details}), 503
+        return jsonify({"error": "GEMINI_API_KEY not configured"}), 503
 
     job_id = job_manager.create_job()
     job_manager.start_pipeline(job_id, options)
@@ -153,31 +148,32 @@ def run_pipeline_job() -> Response:
 def run_batch_job() -> Response:
     uploads = [upload for upload in request.files.getlist("videos") if upload and upload.filename]
     if not uploads:
-        error = VRLErrorCode.NO_VIDEO_FILE
-        return jsonify({"error": format_user_friendly_error(error)}), 400
+        return jsonify({"error": "No video files provided"}), 400
 
     models_raw = request.form.get("models", "")
     models = [m.strip() for m in models_raw.split(",") if m.strip()] or None
     invalid = [m for m in (models or []) if m not in SUPPORTED_MODELS]
     if invalid:
-        error_details = get_error_details(VRLErrorCode.UNSUPPORTED_FORMAT)
-        error_details["details"] = f"Unsupported models: {', '.join(invalid)}"
-        return jsonify({"error": format_user_friendly_error(VRLErrorCode.UNSUPPORTED_FORMAT), "error_details": error_details}), 400
+        return jsonify({"error": f"Unsupported models: {', '.join(invalid)}"}), 400
 
     if not os.environ.get("GEMINI_API_KEY"):
-        error_details = get_error_details(VRLErrorCode.GEMINI_API_KEY_MISSING)
-        return jsonify({"error": format_user_friendly_error(VRLErrorCode.GEMINI_API_KEY_MISSING), "error_details": error_details}), 503
+        return jsonify({"error": "GEMINI_API_KEY not configured"}), 503
 
     video_paths: list[str] = []
     try:
         for upload in uploads:
-            video_paths.append(_save_upload(upload))
+            video_path = _save_upload(upload)
+            if video_path == "file_too_large":
+                for path in video_paths:
+                    if os.path.exists(path):
+                        os.unlink(path)
+                return jsonify({"error": f"File exceeds {MAX_UPLOAD_MB}MB limit"}), 400
+            video_paths.append(video_path)
     except ValueError:
-        for video_path in video_paths:
-            if os.path.exists(video_path):
-                os.unlink(video_path)
-        error = VRLErrorCode.FILE_TOO_LARGE
-        return jsonify({"error": format_user_friendly_error(error)}), 400
+        for path in video_paths:
+            if os.path.exists(path):
+                os.unlink(path)
+        return jsonify({"error": "File upload failed"}), 400
 
     options = _build_options(video_paths[0], models)
     job_id = job_manager.create_job()
@@ -272,60 +268,6 @@ def update_template(model_id: str) -> Response:
 
     info("web", f"Template '{model_id}' updated via web UI")
     return jsonify({"ok": True, "model": model_id, "template": existing})
-
-
-@app.route("/api/monitoring")
-def monitoring() -> Response:
-    from utils.metrics import compute_summary, load_pipeline_history
-
-    summary = compute_summary()
-    entries = load_pipeline_history()
-    v2_entries = [e for e in entries if e.get("version") == "2.0"]
-
-    output_dir = Path("output_blueprints")
-    output_files = list(output_dir.glob("*.json")) + list(output_dir.glob("*.txt"))
-    output_size = sum(f.stat().st_size for f in output_files if f.exists())
-
-    recent_runs = []
-    for entry in v2_entries[-10:]:
-        recent_runs.append({
-            "timestamp": entry.get("timestamp", ""),
-            "video_path": entry.get("video_path", ""),
-            "video_type": entry.get("video_type"),
-            "success": entry.get("success"),
-            "total_ms": (entry.get("timing_ms") or {}).get("total_ms"),
-            "fallback_active": (entry.get("fallback") or {}).get("active", False),
-            "cache_hit": (entry.get("cache") or {}).get("hit", False),
-            "models_compiled": entry.get("models_compiled"),
-            "shots_detected": entry.get("shots_detected"),
-            "errors": len(entry.get("errors") or []),
-        })
-
-    return jsonify({
-        "total_pipeline_runs": summary["total_pipeline_runs"],
-        "total_old_step_entries": summary["total_old_step_entries"],
-        "total_history_entries": summary["total_history_entries"],
-        "successful_runs": summary["successful_runs"],
-        "failed_runs": summary["failed_runs"],
-        "success_rate": summary["success_rate"],
-        "total_fallbacks": summary["total_fallbacks"],
-        "fallback_rate": summary["fallback_rate"],
-        "total_cache_hits": summary["total_cache_hits"],
-        "cache_hit_rate": summary["cache_hit_rate"],
-        "total_retries": summary["total_retries"],
-        "total_errors": summary["total_errors"],
-        "total_models_compiled": summary["total_models_compiled"],
-        "total_shots_detected": summary["total_shots_detected"],
-        "average_timing_ms": summary.get("average_timing_ms", {}),
-        "fastest_pipeline_ms": summary.get("fastest_pipeline_ms"),
-        "slowest_pipeline_ms": summary.get("slowest_pipeline_ms"),
-        "output_files": len(output_files),
-        "output_size_bytes": output_size,
-        "output_size_mb": round(output_size / (1024 * 1024), 2),
-        "recent_runs": recent_runs,
-        "hub_jobs": job_manager.count_jobs(),
-        "last_updated": summary.get("last_updated", ""),
-    })
 
 
 def main() -> None:

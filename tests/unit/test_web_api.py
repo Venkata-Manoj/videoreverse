@@ -55,13 +55,6 @@ def test_config_endpoint(client: Flask.test_client) -> None:
     assert "sample_modes" in data
 
 
-def test_monitoring_endpoint(client: Flask.test_client) -> None:
-    resp = client.get("/api/monitoring")
-    assert resp.status_code == 200
-    data = json.loads(resp.data)
-    assert "hub_jobs" in data
-
-
 def test_get_job_endpoint(client: Flask.test_client) -> None:
     resp = client.get("/api/jobs/test-job-001")
     assert resp.status_code == 200
