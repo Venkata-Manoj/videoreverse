@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from pydantic import ValidationError
+
+from src.schemas.blueprint import UniversalBlueprint
+
 
 class BlueprintValidationError(Exception):
     def __init__(self, message: str, field: str | None = None) -> None:
@@ -11,119 +15,19 @@ class BlueprintValidationError(Exception):
 
 
 def validate_blueprint(blueprint: dict[str, Any]) -> bool:
-    errors = []
-
-    if not blueprint:
-        raise BlueprintValidationError("Blueprint is null or undefined")
-
-    if not isinstance(blueprint, dict):
-        raise BlueprintValidationError(f"Blueprint must be an object, got {type(blueprint).__name__}")
-
-    if not blueprint.get("global_aesthetic") or not isinstance(blueprint["global_aesthetic"], dict):
-        raise BlueprintValidationError("Missing or invalid global_aesthetic object", "global_aesthetic")
-
-    aesthetic = blueprint["global_aesthetic"]
-    required_aesthetic_fields = ["art_style", "color_grading", "lighting_setup"]
-
-    for field in required_aesthetic_fields:
-        if not aesthetic.get(field) or not isinstance(aesthetic[field], str):
-            errors.append(f"global_aesthetic.{field} must be a non-empty string")
-
-    if not isinstance(blueprint.get("chronological_shots"), list):
-        raise BlueprintValidationError("Missing or invalid chronological_shots array", "chronological_shots")
-
-    if len(blueprint["chronological_shots"]) == 0:
-        raise BlueprintValidationError("chronological_shots cannot be empty", "chronological_shots")
-
-    required_shot_fields = [
-        "shot_index",
-        "start_time_seconds",
-        "end_time_seconds",
-        "duration_seconds",
-        "camera_direction",
-        "framing_type",
-        "action_and_motion",
-        "environment_context",
-        "negative_elements",
-        "frame_references",
-    ]
-
-    for i, shot in enumerate(blueprint["chronological_shots"]):
-        if not shot or not isinstance(shot, dict):
-            errors.append(f"Shot {i}: must be an object")
-            continue
-
-        for field in required_shot_fields:
-            if shot.get(field) is None:
-                errors.append(f'Shot {i}: missing required field "{field}"')
-
-        if not isinstance(shot.get("shot_index"), (int, float)) or shot.get("shot_index", -1) < 0:
-            errors.append(f"Shot {i}: shot_index must be a non-negative number")
-
-        if not isinstance(shot.get("start_time_seconds"), (int, float)) or shot.get("start_time_seconds", -1) < 0:
-            errors.append(f"Shot {i}: start_time_seconds must be a non-negative number")
-
-        if not isinstance(shot.get("end_time_seconds"), (int, float)) or shot.get("end_time_seconds", -1) < 0:
-            errors.append(f"Shot {i}: end_time_seconds must be a non-negative number")
-
-        if (
-            isinstance(shot.get("start_time_seconds"), (int, float))
-            and isinstance(shot.get("end_time_seconds"), (int, float))
-            and shot["start_time_seconds"] >= shot["end_time_seconds"]
-        ):
-            errors.append(f"Shot {i}: start_time_seconds must be less than end_time_seconds")
-
-        if not isinstance(shot.get("duration_seconds"), (int, float)) or shot.get("duration_seconds", 0) <= 0:
-            errors.append(f"Shot {i}: duration_seconds must be a positive number")
-
-        for field in ["camera_direction", "framing_type", "action_and_motion", "environment_context"]:
-            if not isinstance(shot.get(field), str):
-                errors.append(f"Shot {i}: {field} must be a string")
-
-        if not isinstance(shot.get("negative_elements"), list):
-            errors.append(f"Shot {i}: negative_elements must be an array")
-
-        if not isinstance(shot.get("frame_references"), list):
-            errors.append(f"Shot {i}: frame_references must be an array")
-        else:
-            for j, ref in enumerate(shot["frame_references"]):
-                if not isinstance(ref.get("frame_index"), (int, float)) or ref.get("frame_index", -1) < 0:
-                    errors.append(f"Shot {i}: frame_references[{j}].frame_index must be a non-negative number")
-                if not isinstance(ref.get("timestamp_seconds"), (int, float)):
-                    errors.append(f"Shot {i}: frame_references[{j}].timestamp_seconds must be a number")
-
-        if shot.get("shot_boundaries") is not None:
-            if not isinstance(shot["shot_boundaries"], dict):
-                errors.append(f"Shot {i}: shot_boundaries must be an object")
-            else:
-                if shot["shot_boundaries"].get("detected_by") and not isinstance(
-                    shot["shot_boundaries"]["detected_by"], str
-                ):
-                    errors.append(f"Shot {i}: shot_boundaries.detected_by must be a string")
-                if shot["shot_boundaries"].get("confidence") and not isinstance(
-                    shot["shot_boundaries"]["confidence"], str
-                ):
-                    errors.append(f"Shot {i}: shot_boundaries.confidence must be a string")
-
-    if errors:
-        raise BlueprintValidationError("Validation failed:\n  - " + "\n  - ".join(errors))
-
-    return True
+    try:
+        UniversalBlueprint(**blueprint)
+        return True
+    except ValidationError as e:
+        errors = []
+        for error in e.errors():
+            loc = ".".join(str(loc_part) for loc_part in error["loc"])
+            msg = error["msg"]
+            errors.append(f"{loc}: {msg}")
+        raise BlueprintValidationError("Validation failed:\n  - " + "\n  - ".join(errors)) from e
 
 
-def validate_video_metadata(metadata: dict[str, Any] | None) -> bool:
-    if not metadata:
-        return False
-
-    required = ["filename", "duration_seconds", "width", "height"]
-    for field in required:
-        if metadata.get(field) is None:
-            return False
-
-    return metadata["duration_seconds"] > 0 and metadata["width"] > 0 and metadata["height"] > 0
-
-
-def sanitize_blueprint(blueprint: dict[str, Any] | None) -> dict[str, Any] | None:
+def _old_sanitize_blueprint(blueprint: dict[str, Any] | None) -> dict[str, Any] | None:
     if not blueprint:
         return None
 
@@ -156,7 +60,8 @@ def sanitize_blueprint(blueprint: dict[str, Any] | None) -> dict[str, Any] | Non
             "negative_elements": shot.get("negative_elements")
             if isinstance(shot.get("negative_elements"), list)
             else [],
-            "frame_references": shot.get("frame_references") if isinstance(shot.get("frame_references"), list) else [],
+            "frame_references": shot.get("frame_references") if isinstance(shot.get("frame_references"), list)
+            else [],
         }
 
         if shot.get("shot_boundaries") and isinstance(shot["shot_boundaries"], dict):
@@ -171,6 +76,28 @@ def sanitize_blueprint(blueprint: dict[str, Any] | None) -> dict[str, Any] | Non
         sanitized["chronological_shots"].append(sanitized_shot)
 
     return sanitized
+
+
+def sanitize_blueprint(blueprint: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not blueprint or not isinstance(blueprint, dict):
+        return None
+    try:
+        blueprint_obj = UniversalBlueprint(**blueprint)
+        return blueprint_obj.model_dump()
+    except (ValidationError, TypeError):
+        return _old_sanitize_blueprint(blueprint)
+
+
+def validate_video_metadata(metadata: dict[str, Any] | None) -> bool:
+    if not metadata:
+        return False
+
+    required = ["filename", "duration_seconds", "width", "height"]
+    for field in required:
+        if metadata.get(field) is None:
+            return False
+
+    return metadata["duration_seconds"] > 0 and metadata["width"] > 0 and metadata["height"] > 0
 
 
 def validate_frame_traceability(

@@ -6,7 +6,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from src.blueprint_prompt import BLUEPRINT_SCHEMA, BLUEPRINT_SYSTEM_PROMPT
+from src.blueprint_prompt import BLUEPRINT_SYSTEM_PROMPT
+from src.schemas.blueprint import UniversalBlueprint
 from utils.key_rotation import get_key_manager
 from utils.retry import api_error_from_exception
 
@@ -319,7 +320,7 @@ Use these as additional hints for shot boundary detection."""
                 ],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    response_schema=BLUEPRINT_SCHEMA,
+                    response_schema=UniversalBlueprint.model_json_schema(),
                     system_instruction=system_instruction,
                 ),
             )

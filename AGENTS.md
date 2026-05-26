@@ -40,8 +40,11 @@ src/
 config/
 └── prompt_templates.json ← Template registry (8 video models)
 
+schemas/
+└── blueprint.py   ← Pydantic V2 models: UniversalBlueprint, ChronologicalShot, GlobalAesthetic, etc.
+
 utils/
-├── validation.py    ← Blueprint validator
+├── validation.py    ← Blueprint validator (Pydantic V2 backed, with legacy fallback)
 ├── retry.py         ← Retry logic + exponential backoff
 ├── fallback.py      ← Graceful degradation
 ├── logger.py        ← Error logging
@@ -74,14 +77,15 @@ web/
 - **Accessibility** — Skip links, ARIA labels, keyboard navigation, focus-visible outlines
 - **Web Worker** — Offloads JSON formatting from main thread
 
-**Universal Schema:** `{ global_aesthetic, chronological_shots[] }` — enforced via `responseSchema`
+**Universal Schema:** `{ global_aesthetic, chronological_shots[] }` — enforced via `responseSchema` generated dynamically from Pydantic V2 `UniversalBlueprint.model_json_schema()`
 
 ## Key Files
 
 - `src/main.py` — CLI entry point. Use `python -m src.main --help` for options.
 - `src/pipeline.py` — Orchestrator. Accepts any video path/URL. Saves to `output_blueprints/`.
 - `src/synthesize.py` — Uses Gemini File API. Cleans up after analysis.
-- `config/prompt_templates.json` — Add new models here. Each entry: `label`, `template`, `supports_negative`, `max_duration`, `aspect_ratio_support`. Top-level `"template_version": "1.0"` for version tracking.
+- `schemas/blueprint.py` — Pydantic V2 models for UniversalBlueprint, used by validation and responseSchema generation.
+- `config/prompt_templates.json` — Add new models here. Each entry: `label`, `template` (placeholders: `{camera}`, `{framing}`, `{style}`, `{action}`, `{environment}`, `{lighting}`, `{color_grading}`, `{duration}`, `{negative}`, `{aspect_ratio}`), `supports_negative`, `max_duration`, `aspect_ratio_support`, `enhancement_rules`.
 - `utils/versioning.py` — History management. `save_history()` runs automatically after pipeline. `--rollback` loads a version's blueprint and re-compiles with current templates.
 
 ## CLI Options
@@ -90,7 +94,7 @@ web/
 python -m src.main <video> [options]
 
 Options:
-  --model, -m          Specific models (comma-separated)
+  --model, -m          Specific models (comma-separated, 10 available)
   --output-dir, -o     Output directory
   --format             json, txt, both, none
   --verbose, -v        Debug logging
@@ -163,7 +167,7 @@ All errors use standardized **VR-XXX** codes. Use `--explain-error <CODE>` for t
 - **ffmpeg output can be large** — subprocess handles large output automatically.
 - **Gemini File API uploads full video** — large files cost more tokens.
 - **Uploaded files deleted** after blueprint generation.
-- **No external validation library** — lightweight custom validation.
+- **Pydantic V2** is now the core validation layer in `schemas/blueprint.py`. Used by `utils/validation.py` and `src/synthesize.py` for responseSchema generation.
 - **Remote URLs may return HTTP 403** — use local files for testing.
 - **Output persists** as dual format: `.json` + `.txt`
 
