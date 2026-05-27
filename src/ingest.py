@@ -48,7 +48,7 @@ def _analyze_audio_mood(audio: dict[str, Any] | None) -> dict[str, Any] | None:
 
     transcript = audio.get("transcript", {}).get("text", "") if isinstance(audio.get("transcript"), dict) else ""
     silence_ratio = audio.get("silenceRatio", 0)
-    codec = audio.get("codec", "")
+    codec = audio.get("codec") or ""
 
     mood_indicators = {
         "silence_dominant": silence_ratio > 0.5,
