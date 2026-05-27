@@ -44,6 +44,9 @@ coverage/
 secrets/
 credentials/
 
+# Pitch / MVP docs (not part of the product)
+phase1/
+
 # Others
 TODO.md
 prompt.txt

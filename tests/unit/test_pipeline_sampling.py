@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from src.pipeline import run_pipeline
+from utils.error_codes import VRError
 
 
 @pytest.fixture
@@ -107,8 +108,21 @@ async def test_pipeline_calls_sample_video_and_passes_path(base_options: dict) -
 
 
 @pytest.mark.anyio
-async def test_pipeline_falls_back_on_sampling_failure(base_options: dict) -> None:
+async def test_pipeline_raises_on_sampling_failure_in_highlights_mode(base_options: dict) -> None:
     options = {**base_options, "sample_mode": "highlights"}
+
+    with (
+        patch("src.pipeline.sample_video", side_effect=RuntimeError("ffmpeg not found")) as mock_sample,
+    ):
+        with pytest.raises(VRError, match="VR-106"):
+            await run_pipeline(options)
+
+        mock_sample.assert_called_once_with(options["video_path"], options)
+
+
+@pytest.mark.anyio
+async def test_pipeline_falls_back_on_sampling_failure_with_force(base_options: dict) -> None:
+    options = {**base_options, "sample_mode": "highlights", "force": True}
 
     with (
         patch("src.pipeline.sample_video", side_effect=RuntimeError("ffmpeg not found")) as mock_sample,

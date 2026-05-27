@@ -97,10 +97,17 @@ async def run_pipeline(
 
     sample_result = None
     sampled_path = str(normalized)
+    sample_mode = options.get("sample_mode", "full")
     try:
         sample_result = sample_video(str(normalized), options)
         sampled_path = sample_result["path"]
     except Exception as err:
+        if sample_mode != "full" and not options.get("force"):
+            raise VRError(
+                VRErrorCode.SAMPLING_FAILED,
+                detail=f"Sampling failed in '{sample_mode}' mode. Use --force to fall back to full video.",
+                cause=err,
+            ) from err
         warn("sampling", f"Smart sampling failed, using full video: {err}")
 
     _emit_progress(
@@ -296,7 +303,8 @@ async def run_pipeline(
             "prompts": prompts,
             "_meta": {
                 "video_type": video_type,
-                "fallback_active": False,
+                "fallback_active": synthesis_backend != "gemini",
+                "synthesis_backend": synthesis_backend,
                 "template_version": get_template_version(),
                 "sampling": sample_result,
             },

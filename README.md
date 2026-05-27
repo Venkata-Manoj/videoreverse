@@ -92,6 +92,7 @@ Optional env vars: `VIDEO_REV_WEB_HOST`, `VIDEO_REV_WEB_PORT` (default `7860`), 
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
 | `GEMINI_API_KEY` | Gemini API key for blueprint synthesis | — | ✅ |
+| `OPENAI_API_KEY` | OpenAI API key for fallback synthesis (when Gemini is unavailable) | — | ❌ |
 | `VIDEO_REV_OUTPUT_DIR` | Output directory | `output_blueprints/` | ❌ |
 | `VIDEO_REV_CONFIG_DIR` | Config directory | `config/` | ❌ |
 | `VIDEO_REV_LOG_LEVEL` | Log level: `debug`, `info`, `warn`, `error`, `quiet` | `info` | ❌ |
