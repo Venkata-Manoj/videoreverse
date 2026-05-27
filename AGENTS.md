@@ -8,7 +8,8 @@ Video-to-prompt pipeline that deconstructs any video into a universal blueprint,
 
 - **Python 3.12+** required. Use `pyenv install 3.12` if needed.
 - `ffmpeg` for smart sampling and video analysis.
-- `GEMINI_API_KEY` in `.env` file — for blueprint synthesis via Gemini File API.
+- `GEMINI_API_KEY` in `.env` file — for primary blueprint synthesis via Gemini File API.
+- `OPENAI_API_KEY` (optional) in `.env` file — for automatic fallback when Gemini is unavailable.
 - `openai-whisper` is installed from `requirements.txt` for local transcription during ingest.
 
 ## Docker
@@ -52,6 +53,7 @@ src/
 ├── pipeline.py         ← Main orchestrator (chains all modules)
 ├── ingest.py           ← ffmpeg → metadata, frames, audio mood
 ├── synthesize.py       ← Gemini File API + responseSchema → blueprint
+├── synthesize_openai.py ← OpenAI vision fallback (GPT-4o mini, auto-triggered)
 ├── compile.py          ← Config-driven prompt compiler
 ├── export.py           ← JSON → human-readable .txt format
 ├── blueprint_prompt.py ← Shared system prompt + JSON schema
@@ -110,7 +112,7 @@ Options:
   --verbose, -v        Debug logging
   --dry-run            Output without saving
   --force, -F          Skip failed steps
-  --max-retries, -r    API retry attempts (default: 5)
+  --max-retries, -r    API retry attempts (default: 3)
   --max-duration       Pre-clip video to first N seconds
   --sample-mode        Sampling: full, first-n, highlights (requires ffmpeg)
   --video-type         Override auto-detected video type
@@ -201,6 +203,7 @@ Keep diverse test videos:
 - when you are done with all the tasks user mentioned then ask user to commit the changes and move forward
 - always check TODO.md for any pending tasks and remind user about it if there are any.
 - always test the code and get it tested before moving forward.
+- if a task or feature request feels overengineered for a single-local-user tool (e.g., K8s, microservices, multi-tenancy, queues, distributed caching, auth, webhooks, observability stacks, API marketplaces), call it out and suggest a simpler alternative before implementing.
 
 ## Update/Enhance
 

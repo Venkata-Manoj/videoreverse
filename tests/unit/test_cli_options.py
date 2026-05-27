@@ -29,7 +29,7 @@ def test_print_help_uses_src_main() -> None:
     assert "python -m src.pipeline" not in output
 
 
-def test_print_help_has_max_retries_default_5() -> None:
+def test_print_help_has_max_retries_default_3() -> None:
     from utils.cli import print_help
     import io
 
@@ -43,4 +43,4 @@ def test_print_help_has_max_retries_default_5() -> None:
         sys.stdout = old_stdout
     output = buf.getvalue()
     assert "--max-retries" in output
-    assert "default: 5" in output
+    assert "default: 3" in output

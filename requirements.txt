@@ -1,5 +1,6 @@
 # Core dependencies
 google-genai>=1.0.0
+openai>=1.0.0
 python-dotenv>=1.0.0
 openai-whisper>=20231117
 pydantic>=2.0

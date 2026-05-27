@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 from datetime import UTC, datetime
@@ -172,10 +173,11 @@ async def build_blueprint(
     if not os.path.exists(normalized):
         raise FileNotFoundError(f"Video file not found: {normalized}")
 
+    client = _get_client()
     uploaded_file = None
     try:
         try:
-            uploaded_file = await _get_client().aio.files.upload(
+            uploaded_file = await client.aio.files.upload(
                 file=normalized,
                 config={"mime_type": "video/mp4"},
             )
@@ -188,10 +190,9 @@ async def build_blueprint(
         processing = False
         status = uploaded_file
         for i in range(60):
-            import asyncio
 
             await asyncio.sleep(1)
-            status = await _get_client().aio.files.get(name=uploaded_file.name)
+            status = await client.aio.files.get(name=uploaded_file.name)
             if status.state == "ACTIVE":
                 print(f"   → File ready ({i + 1}s)", flush=True)
                 processing = True
@@ -310,7 +311,7 @@ Use these as additional hints for shot boundary detection."""
             raise RuntimeError("Gemini file is ACTIVE but has no uri — cannot run multimodal analysis")
 
         try:
-            response = await _get_client().aio.models.generate_content(
+            response = await client.aio.models.generate_content(
                 model=gemini_model,
                 contents=[
                     types.Content(
@@ -400,7 +401,7 @@ Use these as additional hints for shot boundary detection."""
     finally:
         if uploaded_file:
             try:
-                await _get_client().aio.files.delete(name=uploaded_file.name)
+                await client.aio.files.delete(name=uploaded_file.name)
                 print("   → Cleaned up uploaded file from Gemini", flush=True)
             except Exception as e:
                 print(f"   → Cleanup warning: {e}", flush=True)

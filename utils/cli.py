@@ -43,7 +43,7 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
         "verbose": False,
         "quiet": False,
         "force": False,
-        "max_retries": 5,
+        "max_retries": 3,
         "max_duration": None,
         "sample_mode": "full",
         "video_type": None,
@@ -51,6 +51,7 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
         "no_transcribe": False,
         "wsl_mode": None,
         "gemini_model": "gemini-2.5-flash",
+        "mock": False,
     }
 
     i = 0
@@ -149,6 +150,9 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
             elif i < len(args):
                 raise ValueError(f'Invalid Gemini model "{args[i]}". Use: {", ".join(SUPPORTED_GEMINI_MODELS)}')
 
+        elif arg == "--mock":
+            result["mock"] = True
+
         else:
             if not arg.startswith("-") and result["video_path"] is None:
                 result["video_path"] = arg
@@ -184,7 +188,7 @@ Options:
   --quiet, -q          Suppress console output (alias for --log-level quiet)
   --dry-run            Output prompts without saving files
   --force, -F          Skip failed steps and use cached results
-  --max-retries, -r    Max retry attempts for API calls (default: 5)
+  --max-retries, -r    Max retry attempts for API calls (default: 3)
   --max-duration       Pre-clip video to first N seconds
   --sample-mode        Sampling strategy: full (default), first-n (clip first Ns), highlights (30s best moments)
                         Requires ffmpeg. Reduces API cost by 50-90% for long videos (~$0.001/s for Gemini)
@@ -194,7 +198,8 @@ Options:
   --wsl                Force WSL path conversion
   --win                Force Windows path mode
   --gemini-model       Gemini model for analysis: {", ".join(SUPPORTED_GEMINI_MODELS)} (default: gemini-2.5-flash)
-
+  --mock               Skip API calls, generate a synthetic blueprint from metadata (zero cost)
+ 
 Examples:
   python -m src.main /mnt/e/vidrev/test1.mp4
   python -m src.main E:\\vidrev\\test1.mp4 --model runway_gen4_5,google_veo3_1

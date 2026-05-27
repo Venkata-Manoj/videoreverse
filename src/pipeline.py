@@ -19,6 +19,7 @@ from utils.cli import detect_environment
 from utils.error_codes import VRError, VRErrorCode, resolve_error_code
 from utils.logger import debug, error, info, log_pipeline_step, warn
 from utils.retry import RETRY_CONFIG, extract_status_code, with_retry
+from utils.sampler import cleanup_sample, sample_video
 from utils.validation import sanitize_blueprint, validate_blueprint
 from utils.video_type import detect_video_type, get_video_type_label
 
@@ -94,14 +95,23 @@ async def run_pipeline(
     normalized = normalize_for_env(options.get("video_path"), options.get("wsl_mode"))
     video_type = options.get("video_type")
 
+    sample_result = None
+    sampled_path = str(normalized)
+    try:
+        sample_result = sample_video(str(normalized), options)
+        sampled_path = sample_result["path"]
+    except Exception as err:
+        warn("sampling", f"Smart sampling failed, using full video: {err}")
+
     _emit_progress(
         on_progress,
         "step",
         step="resolve",
         status="done",
         message="Video path ready",
-        resolved_path=normalized if isinstance(normalized, str) else str(normalized),
+        resolved_path=sampled_path,
         video_type=video_type,
+        sample_mode=options.get("sample_mode", "full"),
     )
 
     print("=" * 60, flush=True)
@@ -119,7 +129,7 @@ async def run_pipeline(
             "video_type": video_type,
             "options": options,
         },
-        "steps": {},
+        "steps": {"sampling": sample_result},
         "output": None,
         "timing": {},
         "errors": [],
@@ -138,7 +148,7 @@ async def run_pipeline(
 
         try:
             step1_data = await with_retry(
-                lambda: ingest_video(normalized, options=options, on_progress=None),
+                lambda: ingest_video(sampled_path, options=options, on_progress=None),
                 {"maxRetries": options.get("max_retries", RETRY_CONFIG["maxRetries"])},
                 on_retry=lambda a, d, m: _on_retry(
                     "ingest", on_progress, a, d, m,
@@ -184,15 +194,39 @@ async def run_pipeline(
         )
         print("\n-- Blueprint Synthesis --\n", flush=True)
 
+        synthesis_backend = "gemini"
         try:
-            blueprint = await with_retry(
-                lambda: build_blueprint(normalized, results["steps"]["ingest"], options),
-                {"maxRetries": options.get("max_retries", RETRY_CONFIG["maxRetries"])},
-                on_retry=lambda a, d, m: _on_retry(
-                    "synthesize", on_progress, a, d, m,
-                    options.get("max_retries", RETRY_CONFIG["maxRetries"]),
-                ),
-            )
+            if options.get("mock"):
+                print("   → Mock mode enabled, skipping API calls", flush=True)
+                from src.synthesize_mock import build_blueprint_mock
+                blueprint = build_blueprint_mock(sampled_path, results["steps"]["ingest"], options)
+                synthesis_backend = "mock"
+            else:
+                try:
+                    blueprint = await with_retry(
+                        lambda: build_blueprint(sampled_path, results["steps"]["ingest"], options),
+                        {"maxRetries": options.get("max_retries", RETRY_CONFIG["maxRetries"])},
+                        on_retry=lambda a, d, m: _on_retry(
+                            "synthesize", on_progress, a, d, m,
+                            options.get("max_retries", RETRY_CONFIG["maxRetries"]),
+                        ),
+                    )
+                except Exception as gemini_err:
+                    openai_key = os.environ.get("OPENAI_API_KEY")
+                    if not openai_key:
+                        raise
+                    warn("synthesize", f"Gemini failed ({gemini_err}), falling back to OpenAI")
+                    print("   → Gemini unavailable, falling back to OpenAI vision...", flush=True)
+                    synthesis_backend = "openai"
+                    from src.synthesize_openai import build_blueprint_openai
+                    blueprint = await with_retry(
+                        lambda: build_blueprint_openai(sampled_path, results["steps"]["ingest"], options),
+                        {"maxRetries": options.get("max_retries", RETRY_CONFIG["maxRetries"])},
+                        on_retry=lambda a, d, m: _on_retry(
+                            "synthesize_openai", on_progress, a, d, m,
+                            options.get("max_retries", RETRY_CONFIG["maxRetries"]),
+                        ),
+                    )
 
             try:
                 validate_blueprint(blueprint)
@@ -264,6 +298,7 @@ async def run_pipeline(
                 "video_type": video_type,
                 "fallback_active": False,
                 "template_version": get_template_version(),
+                "sampling": sample_result,
             },
         }
 
@@ -289,6 +324,7 @@ async def run_pipeline(
                 print("  DRY RUN -- No files saved", flush=True)
                 print("=" * 60, flush=True)
                 print(json.dumps(results["output"], indent=2), flush=True)
+            cleanup_sample(sample_result)
             _cleanup_temp_dir(results)
             return results["output"]
 
@@ -347,6 +383,7 @@ async def run_pipeline(
             files=saved_files,
         )
 
+        cleanup_sample(sample_result)
         _cleanup_temp_dir(results)
         return results["output"]
 
@@ -367,5 +404,6 @@ async def run_pipeline(
             errors=results.get("errors"),
         )
 
+        cleanup_sample(sample_result)
         _cleanup_temp_dir(results)
         raise

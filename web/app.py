@@ -62,7 +62,7 @@ def _build_options(video_path: str, models: list[str] | None) -> dict[str, objec
         "output_dir": request.form.get("output_dir") or DEFAULT_OUTPUT_DIR,
         "format": request.form.get("format") or "both",
         "dry_run": request.form.get("dry_run") == "true",
-        "max_retries": int(request.form.get("max_retries") or 5),
+        "max_retries": int(request.form.get("max_retries") or 3),
         "max_duration": max_duration,
         "sample_mode": request.form.get("sample_mode") or "full",
         "gemini_model": request.form.get("gemini_model") or "gemini-2.5-flash",
@@ -274,6 +274,11 @@ def main() -> None:
     host = os.environ.get("VIDEO_REV_WEB_HOST", "127.0.0.1")
     port = int(os.environ.get("VIDEO_REV_WEB_PORT", "7860"))
     _ensure_upload_dir()
+
+    cleaned = job_manager.cleanup_old_jobs(max_age_hours=24)
+    if cleaned:
+        info("web", f"Cleaned up {cleaned} old job(s) older than 24h")
+
     print(f"\n  VideoReverse Web UI → http://{host}:{port}\n", flush=True)
     app.run(host=host, port=port, debug=False, threaded=True)
 

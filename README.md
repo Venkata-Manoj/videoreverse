@@ -305,7 +305,7 @@ videoreverse/
 
 | Component | Supported Versions |
 |-----------|-------------------|
-| Python | 3.11+ |
+| Python | 3.12+ |
 | ffmpeg | Latest |
 | Gemini API | v1 |
 | OS | Ubuntu, Windows (WSL), macOS |
