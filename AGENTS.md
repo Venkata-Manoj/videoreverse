@@ -11,6 +11,7 @@ Video-to-prompt pipeline that deconstructs any video into a universal blueprint,
 - `GEMINI_API_KEY` in `.env` file — for primary blueprint synthesis via Gemini File API.
 - `OPENAI_API_KEY` (optional) in `.env` file — for automatic fallback when Gemini is unavailable.
 - `openai-whisper` is installed from `requirements.txt` for local transcription during ingest.
+- **Groq Whisper API** is the primary transcription backend — if `GROQ_API_KEY` is set in `.env`, it uses `whisper-large-v3` via Groq's OpenAI-compatible API. Falls back to local Whisper automatically if Groq is unavailable or no key is set.
 
 ## Docker
 

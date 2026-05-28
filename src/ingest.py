@@ -165,7 +165,36 @@ def _extract_audio_for_transcription(video_path: str, temp_dir: str) -> str | No
     return audio_path
 
 
-def _transcribe_audio(audio_path: str, model_name: str) -> dict[str, Any]:
+def _transcribe_via_groq(audio_path: str) -> dict[str, Any] | None:
+    groq_key = os.environ.get("GROQ_API_KEY")
+    if not groq_key:
+        return None
+
+    try:
+        from openai import OpenAI
+
+        client = OpenAI(api_key=groq_key, base_url="https://api.groq.com/openai/v1")
+        with open(audio_path, "rb") as f:
+            result = client.audio.transcriptions.create(
+                model="whisper-large-v3",
+                file=f,
+                response_format="verbose_json",
+            )
+    except Exception:
+        return None
+
+    return {
+        "text": (getattr(result, "text", "") or "").strip(),
+        "segments": [
+            {"start": s.start, "end": s.end, "text": (s.text or "").strip()}
+            for s in getattr(result, "segments", []) or []
+        ],
+        "status": "complete",
+        "reason": None,
+    }
+
+
+def _transcribe_local(audio_path: str, model_name: str) -> dict[str, Any]:
     try:
         import whisper  # type: ignore[import-not-found]
     except ImportError:
@@ -192,6 +221,13 @@ def _transcribe_audio(audio_path: str, model_name: str) -> dict[str, Any]:
         "status": "complete",
         "reason": None,
     }
+
+
+def _transcribe_audio(audio_path: str, model_name: str) -> dict[str, Any]:
+    groq_result = _transcribe_via_groq(audio_path)
+    if groq_result is not None:
+        return groq_result
+    return _transcribe_local(audio_path, model_name)
 
 
 def ingest_video(
