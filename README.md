@@ -37,7 +37,7 @@ VideoReverse analyzes videos using AI to generate production-ready prompts for v
 - **ffmpeg** — for smart sampling (`apt install ffmpeg` or `brew install ffmpeg`)
 - **GEMINI_API_KEY** — Get from [Google AI Studio](https://aistudio.google.com/)
 
-Local transcription is included in the default `requirements.txt` install. For editable installs, `pip install -e ".[whisper]"` adds Whisper explicitly.
+Transcription uses **Groq Whisper API** (`whisper-large-v3`) when `GROQ_API_KEY` is set — falls back to local Whisper automatically. Local transcription is included in the default `requirements.txt` install. For editable installs, `pip install -e ".[whisper]"` adds Whisper explicitly.
 
 ### Installation
 
@@ -71,7 +71,7 @@ Add `--no-transcribe` to skip local Whisper transcription during ingest.
 
 ### Web UI (browser testing)
 
-For non-technical testers, use the built-in Web UI. It shows each pipeline step in real time (prepare → ingest → blueprint → compile → export), supports multi-file queue uploads, and lets users download saved outputs or copy generated prompts directly from the browser.
+For non-technical testers, use the built-in Web UI. It shows each pipeline step in real time (prepare → ingest → blueprint → compile → export), supports file upload and **URL input** (YouTube/Vimeo/direct links auto-download via yt-dlp), a searchable **model checkbox picker** with Select All/None, multi-file batch queue, and lets users download saved outputs or copy generated prompts directly from the browser.
 
 ```bash
 pip install flask
@@ -93,6 +93,7 @@ Optional env vars: `VIDEO_REV_WEB_HOST`, `VIDEO_REV_WEB_PORT` (default `7860`), 
 |----------|-------------|---------|----------|
 | `GEMINI_API_KEY` | Gemini API key for blueprint synthesis | — | ✅ |
 | `OPENAI_API_KEY` | OpenAI API key for fallback synthesis (when Gemini is unavailable) | — | ❌ |
+| `GROQ_API_KEY` | Groq API key for Whisper transcription (`whisper-large-v3`) | — | ❌ |
 | `VIDEO_REV_OUTPUT_DIR` | Output directory | `output_blueprints/` | ❌ |
 | `VIDEO_REV_CONFIG_DIR` | Config directory | `config/` | ❌ |
 | `VIDEO_REV_LOG_LEVEL` | Log level: `debug`, `info`, `warn`, `error`, `quiet` | `info` | ❌ |

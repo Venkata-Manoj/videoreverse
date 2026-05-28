@@ -60,6 +60,8 @@ python -m src.main --help
 | Variable | Description |
 |----------|-------------|
 | `GEMINI_API_KEY` | Required for Gemini API |
+| `OPENAI_API_KEY` | Optional: fallback synthesis when Gemini unavailable |
+| `GROQ_API_KEY` | Optional: Whisper transcription via Groq API (`whisper-large-v3`) |
 | `VIDEO_REV_OUTPUT_DIR` | Default output directory |
 | `VIDEO_REV_CONFIG_DIR` | Config directory path |
 | `VIDEO_REV_LOG_LEVEL` | Log level override |

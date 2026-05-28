@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-05-28
+
+### Added
+
+- Groq Whisper API as primary transcription backend — uses `whisper-large-v3` via OpenAI-compatible API, falls back to local Whisper automatically
+- URL input in Web UI — paste any video URL (YouTube, Vimeo, direct .mp4), downloads via yt-dlp before pipeline
+- Searchable checkbox model picker in Web UI — replaces `<select multiple>` with 2-column grid, search/filter, Select All/Deselect All, chip display, and history persistence
+
+### Fixed
+
+- `_analyze_audio_mood` crash on `None` audio codec when video has no audio stream
+
 ## [2.1.0] - 2025-06-22
 
 ### Added

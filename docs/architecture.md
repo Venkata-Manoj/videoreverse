@@ -2,17 +2,17 @@
 
 ## Overview
 
-VideoReverse is a modular pipeline that deconstructs videos into production blueprints, then compiles model-specific prompts.
+VideoReverse is a modular pipeline that deconstructs videos into production blueprints, then compiles model-specific prompts. The Web UI adds an optional download step before ingest for remote URLs.
 
 ## Pipeline Flow
 
 ```
-┌─────────┐    ┌──────────┐    ┌───────────┐    ┌──────────┐    ┌────────┐
-│  Video  │───▶│  Ingest  │───▶│ Synthesize │───▶│ Compile  │───▶│ Export │
-└─────────┘    └──────────┘    └───────────┘    └──────────┘    └────────┘
-                     │                 │               │              │
-                   ffmpeg           Gemini           config       .json
-                   metadata          File API      templates     .txt
+┌──────────┐   ┌─────────┐    ┌──────────┐    ┌───────────┐    ┌──────────┐    ┌────────┐
+│  Download│──▶│  Video  │───▶│  Ingest  │───▶│ Synthesize │───▶│ Compile  │───▶│ Export │
+│ (yt-dlp) │   └─────────┘    └──────────┘    └───────────┘    └──────────┘    └────────┘
+└──────────┘                       │                 │               │              │
+   (Web UI only)                 ffmpeg + Groq    Gemini/OpenAI    config       .json / .txt
+                                 Whisper API      File API        templates
 ```
 
 ## Modules
@@ -23,6 +23,7 @@ Extracts video metadata using ffmpeg:
 - Audio analysis with mood detection
 - Motion signal level
 - Frame extraction
+- Audio transcription via Groq Whisper API (`whisper-large-v3`) or local Whisper fallback
 
 ### src/synthesize.py
 Analyzes video using Gemini File API:
