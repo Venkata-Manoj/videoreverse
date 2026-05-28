@@ -52,11 +52,17 @@
              </select>
              <button id="save-profile" class="btn secondary">Save as Custom</button>
            </div>
-           <label>
-             AI models
-             <select id="models-select" multiple size="6"></select>
-             <span class="hint">Hold Ctrl/Cmd to pick several. Leave empty for all models.</span>
-           </label>
+            <fieldset class="model-picker">
+              <legend>AI models</legend>
+              <input type="text" id="model-search" class="model-search" placeholder="Search models..." />
+              <div id="model-grid" class="model-grid"></div>
+              <div class="model-actions">
+                <span id="model-count" class="model-count">0 of 10 selected</span>
+                <button type="button" id="select-all-models" class="btn small">Select All</button>
+                <button type="button" id="deselect-all-models" class="btn small">Deselect All</button>
+              </div>
+              <div id="model-chips" class="model-chips"></div>
+            </fieldset>
            <label>
              Sample mode
              <select id="sample-mode">

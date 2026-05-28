@@ -6,7 +6,9 @@ const runBtn = document.getElementById("run-btn");
 const statusLog = document.getElementById("status-log");
 const resultsSection = document.getElementById("results-section");
 const envBadge = document.getElementById("env-badge");
-const modelsSelect = document.getElementById("models-select");
+const modelGrid = document.getElementById("model-grid");
+const modelSearch = document.getElementById("model-search");
+const modelCount = document.getElementById("model-count");
 const geminiModel = document.getElementById("gemini-model");
 const sampleMode = document.getElementById("sample-mode");
 const resultActions = document.getElementById("result-actions");
@@ -199,11 +201,17 @@ async function loadConfig() {
   envBadge.className = `badge ${health.gemini_configured ? "ok" : "warn"}`;
 
   config.models.forEach((model) => {
-    const option = document.createElement("option");
-    option.value = model.id;
-    option.textContent = model.label;
-    modelsSelect.appendChild(option);
+    const label = document.createElement("label");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.value = model.id;
+    cb.dataset.label = model.label;
+    cb.addEventListener("change", updateModelCount);
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(model.label));
+    modelGrid.appendChild(label);
   });
+  updateModelCount();
 
   config.gemini_models.forEach((model) => {
     const option = document.createElement("option");
@@ -211,6 +219,28 @@ async function loadConfig() {
     option.textContent = model;
     if (model === "gemini-2.5-flash") option.selected = true;
     geminiModel.appendChild(option);
+  });
+
+  document.getElementById("select-all-models").addEventListener("click", () => {
+    modelGrid.querySelectorAll("input[type=checkbox]").forEach((cb) => {
+      cb.checked = true;
+      cb.closest("label").classList.remove("filtered-hidden");
+    });
+    if (modelSearch) modelSearch.value = "";
+    updateModelCount();
+  });
+
+  document.getElementById("deselect-all-models").addEventListener("click", () => {
+    modelGrid.querySelectorAll("input[type=checkbox]:checked").forEach((cb) => { cb.checked = false; });
+    updateModelCount();
+  });
+
+  modelSearch.addEventListener("input", () => {
+    const q = modelSearch.value.toLowerCase();
+    modelGrid.querySelectorAll("label").forEach((label) => {
+      const text = label.textContent.toLowerCase();
+      label.classList.toggle("filtered-hidden", q && !text.includes(q));
+    });
   });
 }
 
@@ -407,6 +437,28 @@ function handleProgress(data) {
   }
 }
 
+function collectSelectedModels() {
+  return [...modelGrid.querySelectorAll("input[type=checkbox]:checked")].map((cb) => cb.value);
+}
+
+function updateModelCount() {
+  const all = modelGrid.querySelectorAll("input[type=checkbox]").length;
+  const checked = collectSelectedModels().length;
+  modelCount.textContent = `${checked} of ${all} selected`;
+  const chips = document.getElementById("model-chips");
+  chips.innerHTML = collectSelectedModels().map((id) => {
+    const cb = modelGrid.querySelector(`input[value="${id}"]`);
+    const label = cb ? cb.dataset.label || id : id;
+    return `<span class="model-chip">${label} <span class="remove" data-model="${id}">&times;</span></span>`;
+  }).join("");
+  chips.querySelectorAll(".remove").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const cb = modelGrid.querySelector(`input[value="${btn.dataset.model}"]`);
+      if (cb) { cb.checked = false; updateModelCount(); }
+    });
+  });
+}
+
 function buildFormData(files) {
   const form = new FormData();
   const fieldName = files.length > 1 ? "videos" : "video";
@@ -421,7 +473,7 @@ function buildFormData(files) {
   const maxDuration = document.getElementById("max-duration").value;
   if (maxDuration) form.append("max_duration", maxDuration);
 
-  const selectedModels = [...modelsSelect.selectedOptions].map((option) => option.value);
+  const selectedModels = collectSelectedModels();
   if (selectedModels.length) form.append("models", selectedModels.join(","));
   return form;
 }
@@ -520,7 +572,7 @@ async function startUrlJob() {
   const maxDuration = document.getElementById("max-duration").value;
   if (maxDuration) form.append("max_duration", maxDuration);
 
-  const selectedModels = [...modelsSelect.selectedOptions].map((o) => o.value);
+  const selectedModels = collectSelectedModels();
   if (selectedModels.length) form.append("models", selectedModels.join(","));
 
   try {
@@ -729,6 +781,13 @@ function rerunHistoryJob(index) {
   if (opts.max_duration) document.getElementById("max-duration").value = opts.max_duration;
   if (opts.no_cache) document.getElementById("no-cache").checked = true;
   if (opts.no_transcribe) document.getElementById("no-transcribe").checked = true;
+
+  if (opts.models && Array.isArray(opts.models)) {
+    modelGrid.querySelectorAll("input[type=checkbox]").forEach((cb) => {
+      cb.checked = opts.models.includes(cb.value);
+    });
+    updateModelCount();
+  }
 
   selectedFiles = [];
   currentMode = "single";
@@ -1082,6 +1141,7 @@ handleProgress = function (data) {
       max_duration: document.getElementById("max-duration").value || "",
       no_cache: document.getElementById("no-cache").checked,
       no_transcribe: document.getElementById("no-transcribe").checked,
+      models: collectSelectedModels(),
     }, currentOutput, data.files || {});
   }
 };
