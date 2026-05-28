@@ -16,6 +16,8 @@ from utils.cli import (
     SUPPORTED_SAMPLE_MODES,
     detect_environment,
 )
+from utils.downloader import download_video, is_valid_video_url
+from utils.error_codes import VRError
 from utils.logger import info
 from web.jobs import JobManager
 
@@ -107,6 +109,41 @@ def config() -> Response:
             "max_upload_mb": MAX_UPLOAD_MB,
         }
     )
+
+
+@app.post("/api/run-url")
+def run_url_job() -> Response:
+    url = request.form.get("url", "").strip()
+    if not url:
+        return jsonify({"error": "No URL provided"}), 400
+
+    if not is_valid_video_url(url):
+        return jsonify({"error": "Invalid URL format"}), 400
+
+    if not os.environ.get("GEMINI_API_KEY"):
+        return jsonify({"error": "GEMINI_API_KEY not configured"}), 503
+
+    try:
+        upload_dir = _ensure_upload_dir()
+        video_path = download_video(url, str(upload_dir), MAX_UPLOAD_MB)
+    except VRError as e:
+        return jsonify({"error": e.detail or str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Download failed: {e}"}), 400
+
+    models_raw = request.form.get("models", "")
+    models = [m.strip() for m in models_raw.split(",") if m.strip()] or None
+    options = _build_options(video_path, models)
+
+    invalid = [m for m in (models or []) if m not in SUPPORTED_MODELS]
+    if invalid:
+        os.unlink(video_path)
+        return jsonify({"error": f"Unsupported models: {', '.join(invalid)}"}), 400
+
+    job_id = job_manager.create_job()
+    job_manager.start_pipeline(job_id, options)
+
+    return jsonify({"job_id": job_id, "filename": Path(video_path).name})
 
 
 @app.post("/api/run")

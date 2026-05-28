@@ -88,6 +88,7 @@ web/
 
 **Web UI Features:**
 
+- **URL Input** — Paste any video URL (YouTube, Vimeo, direct `.mp4`, etc.) — downloads via `yt-dlp` automatically
 - **Job History** — Previous jobs saved to localStorage, re-run with same settings
 - **Template Editor** — In-browser template customization with save back to disk
 
@@ -140,6 +141,7 @@ Options:
 | VR-003 | Invalid CLI argument |
 | VR-004 | File not found |
 | VR-005 | Path resolution failed |
+| VR-006 | URL download failed |
 | VR-101 | FFmpeg not found |
 | VR-102 | FFprobe metadata failed |
 | VR-103 | Frame extraction failed |

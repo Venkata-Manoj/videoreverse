@@ -8,6 +8,9 @@ pydantic>=2.0
 # Web UI (python -m web)
 flask>=3.0.0
 
+# URL downloading for Web UI URL input
+yt-dlp>=2024.0.0
+
 # Dev dependencies
 ruff>=0.4.0
 pytest>=8.0.0

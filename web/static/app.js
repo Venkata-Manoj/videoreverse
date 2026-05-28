@@ -486,6 +486,82 @@ async function startJob() {
 
 runBtn.addEventListener("click", startJob);
 
+/* =========================================
+   URL Input
+   ========================================= */
+
+const urlInput = document.getElementById("video-url");
+const urlRunBtn = document.getElementById("url-run-btn");
+
+async function startUrlJob() {
+  const url = urlInput.value.trim();
+  if (!url) {
+    log("Please enter a video URL");
+    return;
+  }
+
+  urlRunBtn.disabled = true;
+  resetSteps();
+  resultsSection.classList.add("hidden");
+  currentOutput = null;
+  currentFiles = {};
+  currentJobId = null;
+  updateActionButtons();
+
+  const form = new FormData();
+  form.append("url", url);
+  form.append("sample_mode", sampleMode.value);
+  form.append("gemini_model", geminiModel.value);
+  if (document.getElementById("dry-run").checked) form.append("dry_run", "true");
+  if (document.getElementById("use-fallback").checked) form.append("use_fallback", "true");
+  if (document.getElementById("no-cache").checked) form.append("no_cache", "true");
+  if (document.getElementById("no-transcribe").checked) form.append("no_transcribe", "true");
+
+  const maxDuration = document.getElementById("max-duration").value;
+  if (maxDuration) form.append("max_duration", maxDuration);
+
+  const selectedModels = [...modelsSelect.selectedOptions].map((o) => o.value);
+  if (selectedModels.length) form.append("models", selectedModels.join(","));
+
+  try {
+    log(`Downloading from URL: ${url}`);
+    const response = await fetch("/api/run-url", { method: "POST", body: form });
+    const data = await response.json();
+    if (!response.ok) {
+      log(data.error || "Failed to start URL job");
+      urlRunBtn.disabled = false;
+      return;
+    }
+
+    currentJobId = data.job_id;
+    log(`Job ${data.job_id} - ${data.filename}`);
+
+    const events = new EventSource(`/api/jobs/${data.job_id}/stream`);
+    events.onmessage = (event) => {
+      const payload = JSON.parse(event.data);
+      if (payload.event === "stream_end") {
+        events.close();
+        urlRunBtn.disabled = false;
+        return;
+      }
+      handleProgress(payload);
+    };
+    events.onerror = () => {
+      events.close();
+      urlRunBtn.disabled = false;
+      log("Connection lost. Check server logs.");
+    };
+  } catch (err) {
+    log(String(err));
+    urlRunBtn.disabled = false;
+  }
+}
+
+urlRunBtn.addEventListener("click", startUrlJob);
+urlInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") startUrlJob();
+});
+
 downloadJsonBtn.addEventListener("click", () => {
   if (currentJobId && currentFiles.json) {
     window.location.href = `/api/jobs/${currentJobId}/download/json`;
