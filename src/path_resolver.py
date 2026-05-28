@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 from typing import Any
@@ -12,33 +11,13 @@ def get_root() -> str:
     return str(_ROOT)
 
 
-def get_src_path(filename: str = "") -> str:
-    return str(_ROOT / "src" / filename)
-
-
 def get_config_path(filename: str) -> str:
     return str(_ROOT / "config" / filename)
-
-
-def get_utils_path(filename: str = "") -> str:
-    return str(_ROOT / "utils" / filename)
 
 
 def get_output_path(filename: str = "") -> str:
     env_path = os.environ.get("VIDEO_REV_OUTPUT_DIR", str(_ROOT / "output_blueprints"))
     return os.path.join(env_path, filename)
-
-
-def get_cache_path(filename: str = "") -> str:
-    return str(_ROOT / ".cache" / filename)
-
-
-def resolve_template(template_name: str) -> dict[str, Any]:
-    template_path = get_config_path(template_name)
-    if not os.path.exists(template_path):
-        raise FileNotFoundError(f"Template not found: {template_path}")
-    with open(template_path, encoding="utf-8") as f:
-        return json.load(f)
 
 
 def normalize_for_env(target: str | Any, wsl_mode: str | None = None) -> str | Any:

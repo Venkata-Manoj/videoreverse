@@ -109,24 +109,6 @@ def _append_to_error_log(message: str, data: Any = None) -> None:
         print(f"Failed to write to error log: {err}", flush=True)
 
 
-def get_error_log() -> list[str]:
-    _ensure_log_dir()
-    if not os.path.exists(ERROR_LOG_PATH):
-        return []
-    try:
-        with open(ERROR_LOG_PATH, encoding="utf-8") as f:
-            content = f.read()
-        return [line for line in content.split("\n") if line.strip()]
-    except Exception:
-        return []
-
-
-def clear_error_log() -> None:
-    _ensure_log_dir()
-    if os.path.exists(ERROR_LOG_PATH):
-        os.unlink(ERROR_LOG_PATH)
-
-
 def log_pipeline_step(
     step_name: str,
     duration: float,

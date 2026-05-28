@@ -129,31 +129,3 @@ async def with_retry(
             await asyncio.sleep(delay / 1000)
 
     raise last_error
-
-
-async def sleep(ms: int) -> None:
-    await asyncio.sleep(ms / 1000)
-
-
-def parse_retry_args(args: list[str]) -> dict[str, Any]:
-    result = {
-        "maxRetries": RETRY_CONFIG["maxRetries"],
-        "force": False,
-    }
-
-    i = 0
-    while i < len(args):
-        if args[i] in ("--max-retries", "-r"):
-            if i + 1 < len(args):
-                try:
-                    val = int(args[i + 1])
-                    if val >= 0:
-                        result["maxRetries"] = val
-                    i += 1
-                except ValueError:
-                    pass
-        elif args[i] in ("--force", "-f"):
-            result["force"] = True
-        i += 1
-
-    return result

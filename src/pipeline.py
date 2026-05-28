@@ -166,7 +166,6 @@ async def run_pipeline(
             _timing["ingest_ms"] = round((time.monotonic() - _t_step) * 1000, 1)
 
             detected_type = detect_video_type(step1_data.get("video_metadata"), step1_data.get("extraction"))
-            meta = step1_data.get("video_metadata") or {}
             info("video-type", f"Detected: {detected_type}")
 
             if options.get("video_type") and options["video_type"] != detected_type:

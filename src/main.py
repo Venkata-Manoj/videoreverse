@@ -4,8 +4,6 @@ import asyncio
 import json
 import sys
 
-import os
-
 from src.pipeline import run_pipeline
 from utils.cli import detect_environment, parse_cli_args, print_help
 from utils.error_codes import VRError

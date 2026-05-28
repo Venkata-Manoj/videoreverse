@@ -176,13 +176,10 @@ async def build_blueprint(
     client = _get_client()
     uploaded_file = None
     try:
-        try:
-            uploaded_file = await client.aio.files.upload(
-                file=normalized,
-                config={"mime_type": "video/mp4"},
-            )
-        except Exception as exc:
-            raise
+        uploaded_file = await client.aio.files.upload(
+            file=normalized,
+            config={"mime_type": "video/mp4"},
+        )
         size_mb = uploaded_file.size_bytes / 1024 / 1024 if hasattr(uploaded_file, "size_bytes") else 0
         print(f"   → Uploaded: {uploaded_file.name} ({size_mb:.1f} MB)", flush=True)
 

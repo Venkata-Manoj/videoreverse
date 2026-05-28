@@ -78,13 +78,6 @@ class VRError(Exception):
         }
 
 
-def format_error(code: VRErrorCode, detail: str | None = None) -> str:
-    msg = f"[{code.code}] {code.message}"
-    if detail:
-        msg += f" -- {detail}"
-    return msg
-
-
 def resolve_error_code(err: Exception) -> VRErrorCode | None:
     if isinstance(err, VRError):
         return err.code_obj

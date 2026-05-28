@@ -9,19 +9,6 @@ from typing import Any
 
 SAMPLE_MODES = ["full", "first-n", "highlights"]
 
-COST_ESTIMATE: dict[str, Any] = {
-    "gemini_2_5_flash_per_second": 0.001,
-    "note": "Gemini 2.5 Flash ~$0.001/second of video. A 60s video costs ~$0.06.",
-}
-
-
-def estimate_cost(duration_seconds: float) -> dict[str, Any]:
-    return {
-        "duration_seconds": duration_seconds,
-        "estimated_cost_usd": round(duration_seconds * COST_ESTIMATE["gemini_2_5_flash_per_second"], 4),
-        "savings_vs_full": None,
-    }
-
 
 def _get_video_duration(video_path: str) -> float:
     try:
