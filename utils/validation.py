@@ -39,14 +39,29 @@ def validate_blueprint(blueprint: dict[str, Any]) -> bool:
         raise BlueprintValidationError("Validation failed:\n  - " + "\n  - ".join(errors)) from e
 
 
+def _coerce_shot(shot: dict[str, Any], index: int) -> dict[str, Any]:
+    out = dict(shot)
+    if "shot_index" not in out or out["shot_index"] is None:
+        out["shot_index"] = index
+    ne = out.get("negative_elements")
+    if isinstance(ne, str):
+        out["negative_elements"] = [ne]
+    elif ne is None:
+        out["negative_elements"] = []
+    if out.get("frame_references") is None:
+        out["frame_references"] = []
+    return out
+
+
 def sanitize_blueprint(blueprint: dict[str, Any] | None) -> dict[str, Any] | None:
     if not blueprint or not isinstance(blueprint, dict):
         return None
     try:
-        blueprint_obj = UniversalBlueprint(**blueprint)
+        data = dict(blueprint)
+        shots = data.get("chronological_shots", [])
+        if isinstance(shots, list):
+            data["chronological_shots"] = [_coerce_shot(s, i) for i, s in enumerate(shots)]
+        blueprint_obj = UniversalBlueprint(**data)
         return blueprint_obj.model_dump()
     except (ValidationError, TypeError):
         return None
-
-
-

@@ -10,6 +10,8 @@ Video-to-prompt pipeline that deconstructs any video into a universal blueprint,
 - `ffmpeg` for smart sampling and video analysis.
 - `GEMINI_API_KEY` in `.env` file — for primary blueprint synthesis via Gemini File API.
 - `OPENAI_API_KEY` (optional) in `.env` file — for automatic fallback when Gemini is unavailable.
+- `OPENROUTER_API_KEY` (optional) in `.env` file — free fallback via Kimi K2.6 (text-only, 1 frame).
+- `NVIDIA_NIM_API_KEY` (optional) in `.env` file — free fallback via Nemotron Nano VL 8B (multi-image vision).
 - `openai-whisper` is installed from `requirements.txt` for local transcription during ingest.
 - **Groq Whisper API** is the primary transcription backend — if `GROQ_API_KEY` is set in `.env`, it uses `whisper-large-v3` via Groq's OpenAI-compatible API. Falls back to local Whisper automatically if Groq is unavailable or no key is set.
 
@@ -55,6 +57,7 @@ src/
 ├── ingest.py           ← ffmpeg → metadata, frames, audio mood
 ├── synthesize.py       ← Gemini File API + responseSchema → blueprint
 ├── synthesize_openai.py ← OpenAI vision fallback (GPT-4o mini, auto-triggered)
+├── synthesize_free_api.py ← Free API fallback (OpenRouter Kimi K2.6 + NVIDIA Nemotron VL 8B)
 ├── compile.py          ← Config-driven prompt compiler
 ├── export.py           ← JSON → human-readable .txt format
 ├── blueprint_prompt.py ← Shared system prompt + JSON schema
@@ -82,7 +85,7 @@ web/
 └── static/           ← HTML/CSS/JS UI (step timeline + results tabs)
 ```
 
-**Flow:** Video → [sampler] → ffmpeg (metadata + audio) → Gemini File API (multimodal analysis) → template compiler → dual output
+**Flow:** Video → [sampler] → ffmpeg (metadata + audio) → Gemini File API (primary) → OpenAI (fallback 1) → OpenRouter Kimi K2.6 (fallback 2) → NVIDIA Nemotron VL 8B (fallback 3) → template compiler → dual output
 
 **Persistence:** Job state and events persisted to `.cache/videoreverse.db` (SQLite + WAL). Auto-cleanup of jobs older than 24h. Override with `VIDEO_REV_DB_PATH` env var.
 
@@ -99,6 +102,7 @@ web/
 - `src/main.py` — CLI entry point. Use `python -m src.main --help` for options.
 - `src/pipeline.py` — Orchestrator. Accepts any video path/URL. Saves to `output_blueprints/`.
 - `src/synthesize.py` — Uses Gemini File API. Cleans up after analysis.
+- `src/synthesize_free_api.py` — Free fallback backends (OpenRouter + NVIDIA NIM).
 - `schemas/blueprint.py` — Pydantic V2 models for UniversalBlueprint, used by validation and responseSchema generation.
 - `config/prompt_templates.json` — Add new models here. Each entry: `label`, `template` (placeholders: `{camera}`, `{framing}`, `{style}`, `{action}`, `{environment}`, `{lighting}`, `{color_grading}`, `{duration}`, `{negative}`, `{aspect_ratio}`), `supports_negative`, `max_duration`, `aspect_ratio_support`, `enhancement_rules`.
 
@@ -123,6 +127,7 @@ Options:
   --wsl                Force WSL path conversion
   --win                Force Windows path mode
   --gemini-model       Gemini model: gemini-2.5-flash, gemini-2.5-pro, gemini-2.0-flash
+  --mock               Skip API calls, generate synthetic blueprint from metadata
   --help, -h           Show help
 ```
 
@@ -162,7 +167,7 @@ Options:
 ## Error Handling
 
 1. **Retry with backoff** — 3 attempts, exponential delay
-2. **Validation** — Sanitize malformed JSON automatically
+2. **Validation** — Sanitize malformed JSON automatically (handles missing `shot_index`, string `negative_elements`, etc.)
 3. **Logging** — Errors persisted to `output_blueprints/errors.log`
 
 ## Gotchas
@@ -172,6 +177,7 @@ Options:
 - **Gemini File API uploads full video** — large files cost more tokens.
 - **Uploaded files deleted** after blueprint generation.
 - **Pydantic V2** is the core validation layer in `schemas/blueprint.py`. Used by `utils/validation.py` and `src/synthesize.py` for responseSchema generation.
+- **Automatic fallback** — Gemini → OpenAI → OpenRouter Kimi K2.6 → NVIDIA Nemotron Nano VL 8B
 - **Remote URLs may return HTTP 403** — use local files for testing.
 - **Output persists** as dual format: `.json` + `.txt`
 - **Job state persists** in `.cache/videoreverse.db` (SQLite + WAL). Override path with `VIDEO_REV_DB_PATH`.

@@ -224,20 +224,64 @@ async def run_pipeline(
                     )
                 except Exception as gemini_err:
                     openai_key = os.environ.get("OPENAI_API_KEY")
-                    if not openai_key:
-                        raise
-                    warn("synthesize", f"Gemini failed ({gemini_err}), falling back to OpenAI")
-                    print("   → Gemini unavailable, falling back to OpenAI vision...", flush=True)
-                    synthesis_backend = "openai"
-                    from src.synthesize_openai import build_blueprint_openai
-                    blueprint = await with_retry(
-                        lambda: build_blueprint_openai(sampled_path, results["steps"]["ingest"], options),
-                        {"maxRetries": options.get("max_retries", RETRY_CONFIG["maxRetries"])},
-                        on_retry=lambda a, d, m: _on_retry(
-                            "synthesize_openai", on_progress, a, d, m,
-                            options.get("max_retries", RETRY_CONFIG["maxRetries"]),
-                        ),
-                    )
+                    blueprint = None
+
+                    if openai_key:
+                        warn("synthesize", f"Gemini failed ({gemini_err}), falling back to OpenAI")
+                        print("   → Gemini unavailable, falling back to OpenAI vision...", flush=True)
+                        synthesis_backend = "openai"
+                        from src.synthesize_openai import build_blueprint_openai
+                        try:
+                            blueprint = await with_retry(
+                                lambda: build_blueprint_openai(sampled_path, results["steps"]["ingest"], options),
+                                {"maxRetries": options.get("max_retries", RETRY_CONFIG["maxRetries"])},
+                                on_retry=lambda a, d, m: _on_retry(
+                                    "synthesize_openai", on_progress, a, d, m,
+                                    options.get("max_retries", RETRY_CONFIG["maxRetries"]),
+                                ),
+                            )
+                        except Exception as openai_err:
+                            warn("synthesize", f"OpenAI fallback also failed ({openai_err})")
+
+                    if not blueprint:
+                        from src.synthesize_free_api import build_blueprint_openrouter
+                        openrouter_key = os.environ.get("OPENROUTER_API_KEY")
+                        if openrouter_key:
+                            synthesis_backend = "openrouter"
+                            try:
+                                blueprint = await with_retry(
+                                    lambda: build_blueprint_openrouter(sampled_path, results["steps"]["ingest"], options),
+                                    {"maxRetries": options.get("max_retries", RETRY_CONFIG["maxRetries"])},
+                                    on_retry=lambda a, d, m: _on_retry(
+                                        "synthesize_openrouter", on_progress, a, d, m,
+                                        options.get("max_retries", RETRY_CONFIG["maxRetries"]),
+                                    ),
+                                )
+                            except Exception as or_err:
+                                warn("synthesize", f"OpenRouter fallback also failed ({or_err})")
+
+                    if not blueprint:
+                        from src.synthesize_free_api import build_blueprint_nvidia
+                        nvidia_key = os.environ.get("NVIDIA_NIM_API_KEY")
+                        if nvidia_key:
+                            synthesis_backend = "nvidia"
+                            try:
+                                blueprint = await with_retry(
+                                    lambda: build_blueprint_nvidia(sampled_path, results["steps"]["ingest"], options),
+                                    {"maxRetries": options.get("max_retries", RETRY_CONFIG["maxRetries"])},
+                                    on_retry=lambda a, d, m: _on_retry(
+                                        "synthesize_nvidia", on_progress, a, d, m,
+                                        options.get("max_retries", RETRY_CONFIG["maxRetries"]),
+                                    ),
+                                )
+                            except Exception as nv_err:
+                                warn("synthesize", f"NVIDIA fallback also failed ({nv_err})")
+
+                    if not blueprint:
+                        raise VRError(
+                            VRErrorCode.GEMINI_SYNTHESIS_FAILED,
+                            detail="All synthesis backends failed (Gemini, OpenAI, OpenRouter, NVIDIA)",
+                        )
 
             try:
                 validate_blueprint(blueprint)
