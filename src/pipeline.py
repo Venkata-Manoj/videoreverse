@@ -170,6 +170,11 @@ async def run_pipeline(
 
             if options.get("video_type") and options["video_type"] != detected_type:
                 warn("video-type", f"Override: {options['video_type']} (detected: {detected_type})")
+                video_type = options["video_type"]
+            elif not options.get("video_type"):
+                video_type = detected_type
+            options["video_type"] = video_type
+            results["input"]["video_type"] = video_type
         except Exception as err:
             err_msg = f"Ingestion failed: {err}"
             results["errors"].append({"step": "ingest", "error": err_msg})

@@ -295,8 +295,8 @@ def update_template(model_id: str) -> Response:
         return jsonify({"error": f"Model '{model_id}' not found"}), 404
 
     existing = templates[model_id]
-    for key in ("template", "label", "supports_negative", "max_duration", "aspect_ratio_support", "negative_placeholder", "notes", "enhancement_rules"):
-        if key in data:
+    for key in data:
+        if key in existing:
             existing[key] = data[key]
 
     with open(templates_path, "w", encoding="utf-8") as f:

@@ -226,6 +226,8 @@ async def build_blueprint(
             indicators = [k for k, v in audio_mood["indicators"].items() if v]
             audio_profile = f" - Audio profile: {', '.join(indicators) if indicators else 'none'}"
 
+        video_type = options.get("video_type") or "auto-detected"
+
         user_prompt = f"""Analyze this video and produce a complete production blueprint with frame-aware analysis.
 
 Technical context from local analysis:
@@ -234,6 +236,7 @@ Technical context from local analysis:
 - FPS: {metadata.get("fps", 0)}
 - Codec: {metadata.get("codec", "unknown")}
 - Motion level: {extraction.get("motion_signal_level", "unknown")}
+- Video type: {video_type}
 {frame_context}
 - {audio_info}{transcript_str}
 {audio_profile}
