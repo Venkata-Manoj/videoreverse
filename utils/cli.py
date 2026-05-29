@@ -24,7 +24,7 @@ SUPPORTED_MODELS = [
 SUPPORTED_FORMATS = ["json", "txt", "both", "none"]
 SUPPORTED_SAMPLE_MODES = ["full", "first-n", "highlights"]
 SUPPORTED_LOG_LEVELS = ["debug", "info", "warn", "error", "quiet"]
-SUPPORTED_GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"]
+SUPPORTED_GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-3-flash", "gemini-flash-latest", "gemini-flash-lite-latest"]
 
 
 def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
@@ -109,6 +109,16 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
                 except ValueError:
                     pass
 
+        elif arg == "--max-frames":
+            i += 1
+            if i < len(args):
+                try:
+                    n = int(args[i])
+                    if n >= 2:
+                        result["max_frames"] = n
+                except ValueError:
+                    pass
+
         elif arg == "--max-duration":
             i += 1
             if i < len(args):
@@ -116,6 +126,16 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
                     duration = float(args[i])
                     if duration > 0:
                         result["max_duration"] = duration
+                except ValueError:
+                    pass
+
+        elif arg == "--rate-limit-rpm":
+            i += 1
+            if i < len(args):
+                try:
+                    rpm = float(args[i])
+                    if rpm > 0:
+                        result["rate_limit_rpm"] = rpm
                 except ValueError:
                     pass
 
@@ -130,6 +150,19 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
             i += 1
             if i < len(args) and args[i]:
                 result["video_type"] = args[i]
+
+        elif arg == "--no-compress":
+            result["no_compress"] = True
+
+        elif arg == "--compress-width":
+            i += 1
+            if i < len(args):
+                try:
+                    w = int(args[i])
+                    if w >= 360:
+                        result["compress_width"] = w
+                except ValueError:
+                    pass
 
         elif arg == "--no-cache":
             result["no_cache"] = True
@@ -189,14 +222,18 @@ Options:
   --dry-run            Output prompts without saving files
   --force, -F          Skip failed steps and use cached results
   --max-retries, -r    Max retry attempts for API calls (default: 3)
+  --max-frames         Max frames to extract (default: 60, reduces token usage)
   --max-duration       Pre-clip video to first N seconds
   --sample-mode        Sampling strategy: full (default), first-n (clip first Ns), highlights (30s best moments)
                         Requires ffmpeg. Reduces API cost by 50-90% for long videos (~$0.001/s for Gemini)
   --video-type         Override auto-detected video type
+  --no-compress        Skip video compression before API upload
+  --compress-width     Target width for compression (default: 720, min: 360)
   --no-cache           Disable response caching
   --no-transcribe      Skip local Whisper transcription during ingest
   --wsl                Force WSL path conversion
   --win                Force Windows path mode
+  --rate-limit-rpm     Max API requests per minute (default: 5, for free tier; set higher for paid)
   --gemini-model       Gemini model for analysis: {", ".join(SUPPORTED_GEMINI_MODELS)} (default: gemini-2.5-flash)
   --mock               Skip API calls, generate a synthetic blueprint from metadata (zero cost)
  

@@ -26,10 +26,17 @@ python -m src.ingest <video>        # Ingestion only
 | `--quiet, -q` | Suppress console output | `false` |
 | `--dry-run` | Output without saving files | `false` |
 | `--force, -F` | Skip failed steps | `false` |
-| `--max-retries, -r` | API retry attempts | `3` |
+| `--max-retries, -r` | API retry attempts | `2` |
+| `--max-frames` | Max frames to extract (reduces token usage) | `60` |
 | `--max-duration` | Pre-clip to N seconds | - |
+| `--sample-mode` | Sampling: `full`, `first-n`, `highlights` | `full` |
 | `--video-type` | Override video type detection | Auto |
+| `--no-compress` | Skip video compression before API upload | `false` |
+| `--compress-width` | Target width for compression (min: 360) | `720` |
 | `--no-cache` | Disable blueprint caching | `false` |
+| `--rate-limit-rpm` | Max API requests per minute | `5` |
+| `--gemini-model` | Gemini model for analysis | `gemini-2.5-flash` |
+| `--mock` | Skip API calls, synthetic blueprint from metadata | `false` |
 | `--wsl` | Force WSL path mode | Auto |
 | `--win` | Force Windows path mode | Auto |
 
@@ -50,6 +57,12 @@ python -m src.main ./video.mp4 --dry-run --verbose
 
 # Custom output
 python -m src.main ./video.mp4 --output-dir my_results --format json
+
+# Use a specific Gemini model with rate limit
+python -m src.main ./video.mp4 --gemini-model gemini-3.5-flash --rate-limit-rpm 1
+
+# Mock mode (no API calls)
+python -m src.main ./video.mp4 --mock
 
 # Help
 python -m src.main --help

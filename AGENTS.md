@@ -64,7 +64,8 @@ src/
 └── path_resolver.py    ← Path normalization utility
 
 config/
-└── prompt_templates.json ← Template registry (8 video models)
+├── prompt_templates.json ← Template registry (8 video models)
+└── model_limits.json     ← Per-model free tier limits (RPM/TPM/RPD)
 
 schemas/
 └── blueprint.py   ← Pydantic V2 models: UniversalBlueprint, ChronologicalShot, GlobalAesthetic, etc.
@@ -72,6 +73,7 @@ schemas/
 utils/
 ├── validation.py    ← Blueprint validator (Pydantic V2 backed)
 ├── retry.py         ← Retry logic + exponential backoff
+├── rate_limiter.py  ← Per-model RPM/TPM/RPD sliding window rate limiter
 ├── logger.py        ← Error logging
 ├── cli.py           ← CLI argument parser
 ├── video_type.py    ← Video type detection
@@ -85,7 +87,7 @@ web/
 └── static/           ← HTML/CSS/JS UI (step timeline + results tabs)
 ```
 
-**Flow:** Video → [sampler] → ffmpeg (metadata + audio) → Gemini File API (primary) → OpenAI (fallback 1) → OpenRouter Kimi K2.6 (fallback 2) → NVIDIA Nemotron VL 8B (fallback 3) → template compiler → dual output
+**Flow:** Video → [sampler] → ffmpeg (metadata + audio) → Gemini (primary) → Gemini fallback chain (lighter models) → OpenAI (fallback 1) → OpenRouter Kimi K2.6 (fallback 2) → NVIDIA Nemotron VL 8B (fallback 3) → template compiler → dual output
 
 **Persistence:** Job state and events persisted to `.cache/videoreverse.db` (SQLite + WAL). Auto-cleanup of jobs older than 24h. Override with `VIDEO_REV_DB_PATH` env var.
 
@@ -105,6 +107,8 @@ web/
 - `src/synthesize_free_api.py` — Free fallback backends (OpenRouter + NVIDIA NIM).
 - `schemas/blueprint.py` — Pydantic V2 models for UniversalBlueprint, used by validation and responseSchema generation.
 - `config/prompt_templates.json` — Add new models here. Each entry: `label`, `template` (placeholders: `{camera}`, `{framing}`, `{style}`, `{action}`, `{environment}`, `{lighting}`, `{color_grading}`, `{duration}`, `{negative}`, `{aspect_ratio}`), `supports_negative`, `max_duration`, `aspect_ratio_support`, `enhancement_rules`.
+- `config/model_limits.json` — Per-model free tier limits (RPM, TPM, RPD). Used by `utils/rate_limiter.py` to enforce quotas.
+- `utils/rate_limiter.py` — Sliding window rate limiter enforcing RPM/TPM/RPD per model before API calls.
 
 ## CLI Options
 
@@ -118,20 +122,39 @@ Options:
   --verbose, -v        Debug logging
   --dry-run            Output without saving
   --force, -F          Skip failed steps
-  --max-retries, -r    API retry attempts (default: 3)
+  --max-retries, -r    API retry attempts (default: 2)
+  --max-frames         Max frames to extract (default: 60, reduces token usage)
   --max-duration       Pre-clip video to first N seconds
   --sample-mode        Sampling: full, first-n, highlights (requires ffmpeg)
   --video-type         Override auto-detected video type
+  --no-compress        Skip video compression before API upload
+  --compress-width     Target width for compression (default: 720, min: 360)
   --no-cache           Disable blueprint caching
   --no-transcribe      Skip local Whisper transcription
   --wsl                Force WSL path conversion
   --win                Force Windows path mode
-  --gemini-model       Gemini model: gemini-2.5-flash, gemini-2.5-pro, gemini-2.0-flash
+  --gemini-model       Gemini model: gemini-2.5-flash, gemini-2.5-flash-lite, gemini-3.5-flash, gemini-3.1-flash-lite, gemini-3-flash, gemini-flash-latest, gemini-flash-lite-latest
+  --rate-limit-rpm     Max API requests per minute (default: 5 for free tier)
   --mock               Skip API calls, generate synthetic blueprint from metadata
   --help, -h           Show help
 ```
 
-**Smart Sampling:** Reduces API cost by 50-90% for long videos.
+## Resource Optimizations
+
+### Video Compression (auto-enabled)
+Videos wider than 720px are compressed before Gemini upload via ffmpeg (scaled to 720p, CRF 28, AAC 64k audio). Reduces upload size by 60-90% with no quality loss for AI analysis. Skip with `--no-compress`, adjust with `--compress-width 480`.
+
+### Frame Capping (default: 60)
+After extracting all I-frames, the list is downsampled to `--max-frames` (default 60) using uniform sampling. This reduces prompt token count and API cost. The frame timeline in the blueprint covers the full duration.
+
+### Upload Caching (automatic)
+If Gemini returns a retriable error (503/429), the uploaded file URI is cached in memory and reused on retry — no re-upload waste. The file is cleaned up on success.
+
+### Default Retries Reduced (2 instead of 3)
+Combined with upload caching, 2 retries are sufficient.
+
+### Smart Sampling
+Reduces API cost by 50-90% for long videos.
 
 - `--sample-mode first-n --max-duration 30` → clip first 30s
 - `--sample-mode highlights --max-duration 30` → extract 30s of highest-motion segments

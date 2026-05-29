@@ -65,9 +65,13 @@ python -m src.main ./video.mp4 --model runway_gen4_5,google_veo3_1
 
 # Dry run (no files saved)
 python -m src.main ./video.mp4 --dry-run --verbose
+
+# Use a specific Gemini model
+python -m src.main ./video.mp4 --gemini-model gemini-3.5-flash
 ```
 
-Add `--no-transcribe` to skip local Whisper transcription during ingest.
+Add `--no-transcribe` to skip local Whisper transcription during ingest.  
+Add `--mock` to generate a synthetic blueprint from metadata without any API calls (zero cost).
 
 ### Web UI (browser testing)
 
@@ -98,6 +102,20 @@ Optional env vars: `VIDEO_REV_WEB_HOST`, `VIDEO_REV_WEB_PORT` (default `7860`), 
 | `VIDEO_REV_CONFIG_DIR` | Config directory | `config/` | ❌ |
 | `VIDEO_REV_LOG_LEVEL` | Log level: `debug`, `info`, `warn`, `error`, `quiet` | `info` | ❌ |
 
+### Supported Gemini Models
+
+| Model | RPM | TPM | RPD | Notes |
+|-------|-----|-----|-----|-------|
+| `gemini-2.5-flash` | 3 | 2,110 | 11 | Default, good quality/rate balance |
+| `gemini-3.5-flash` | 1 | 1,960 | 2 | Latest, best quality, very limited |
+| `gemini-2.5-flash-lite` | 2 | 1,390 | 4 | Lighter, faster |
+| `gemini-3.1-flash-lite` | 15 | 250K | 500 | High rate limit, lower quality |
+| `gemini-3-flash` | 5 | 250K | 20 | Good fallback |
+| `gemini-flash-latest` | 3 | 2,110 | 11 | Alias for 2.5-flash |
+| `gemini-flash-lite-latest` | 2 | 1,390 | 4 | Alias for 2.5-flash-lite |
+
+Limits are enforced by the sliding window rate limiter (`utils/rate_limiter.py`) before each API call. If a model's RPM/TPM/RPD is exhausted, the pipeline automatically falls back through lighter Gemini models before trying external APIs.
+
 ### CLI Options
 
 | Flag | Description | Default |
@@ -110,11 +128,18 @@ Optional env vars: `VIDEO_REV_WEB_HOST`, `VIDEO_REV_WEB_PORT` (default `7860`), 
 | `--quiet, -q` | Suppress console output | `false` |
 | `--dry-run` | Output without saving files | `false` |
 | `--force, -F` | Skip failed steps, use cached results | `false` |
-| `--max-retries, -r` | API retry attempts | `3` |
+| `--max-retries, -r` | API retry attempts | `2` |
+| `--max-frames` | Max frames to extract (reduces token usage) | `60` |
 | `--max-duration` | Pre-clip video to N seconds | — |
+| `--sample-mode` | Sampling: `full`, `first-n`, `highlights` | `full` |
 | `--video-type` | Override auto-detected video type | Auto |
+| `--no-compress` | Skip video compression before API upload | `false` |
+| `--compress-width` | Target width for compression (min: 360) | `720` |
 | `--no-cache` | Disable blueprint caching | `false` |
 | `--no-transcribe` | Skip local Whisper transcription | `false` |
+| `--rate-limit-rpm` | Max API requests per minute | `5` |
+| `--gemini-model` | Gemini model for analysis | `gemini-2.5-flash` |
+| `--mock` | Skip API calls, synthetic blueprint | `false` |
 | `--wsl` | Force WSL path conversion | Auto |
 | `--win` | Force Windows path mode | Auto |
 
@@ -123,13 +148,19 @@ Optional env vars: `VIDEO_REV_WEB_HOST`, `VIDEO_REV_WEB_PORT` (default `7860`), 
 ## 🏗️ Architecture
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Video     │────▶│   Ingest    │────▶│  Synthesize │────▶│   Compile   │────▶│   Export    │
-│   Input     │     │   (ffmpeg)  │     │   (Gemini)  │     │  (Templates)│     │ (JSON/TXT)  │
-└─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
-                        │                    │                    │                    │
-                   metadata            blueprint             prompts             output
-                   + audio              + shots               + model             files
+┌─────────────┐     ┌─────────────┐     ┌──────────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Video     │────▶│   Ingest    │────▶│   Synthesize     │────▶│   Compile   │────▶│   Export    │
+│   Input     │     │   (ffmpeg)  │     │  (Gemini chain)  │     │  (Templates)│     │ (JSON/TXT)  │
+└─────────────┘     └──────┬──────┘     └────────┬─────────┘     └─────────────┘     └─────────────┘
+                           │                      │
+                      metadata + audio       fallback chain:
+                      + compressed video     gemini-2.5-flash →
+                      + capped frames        gemini-2.5-flash-lite →
+                                             gemini-3.1-flash-lite →
+                                             gemini-3-flash →
+                                             OpenAI GPT-4o mini →
+                                             OpenRouter Kimi K2.6 →
+                                             NVIDIA Nemotron VL 8B
 ```
 
 ### Core Components
@@ -176,10 +207,7 @@ Optional env vars: `VIDEO_REV_WEB_HOST`, `VIDEO_REV_WEB_PORT` (default `7860`), 
 pip install -r requirements.txt
 
 # Run all tests
-python -m src.run_tests
-
-# Run unit tests
-python -c "from tests.unit import test_validation, test_compile, test_retry; test_validation.run_tests(); test_compile.run_tests(); test_retry.run_tests()"
+python -m pytest tests/unit/
 
 # Run linter
 python scripts/lint.py
@@ -291,8 +319,10 @@ videoreverse/
 │   ├── path_resolver.py  # Path normalization
 │   └── run_tests.py      # Test runner
 ├── config/               # Configuration
-│   └── prompt_templates.json
+│   ├── prompt_templates.json
+│   └── model_limits.json     # Per-model free tier limits
 ├── utils/                # Shared utilities
+│   └── rate_limiter.py   # Per-model RPM/TPM/RPD limiter
 ├── tests/                # Test suite
 ├── scripts/              # Dev automation
 ├── docs/                 # Documentation

@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-05-29
+
+### Added
+
+- `utils/rate_limiter.py` — Sliding window rate limiter enforcing per-model RPM (60s), TPM (60s), RPD (86400s) with token estimation (prompt/4 + frames×258 + video_seconds×300)
+- `config/model_limits.json` — Per-model free tier limits (RPM, TPM, RPD) for 7 Gemini models, editable without touching code
+- **Video compression** — auto-enabled for videos >720px wide (ffmpeg scale=720p, CRF 28, AAC 64k); prints size reduction ratio. Skip with `--no-compress`, adjust with `--compress-width`
+- **Frame capping** — after I-frame extraction, down-samples evenly to `--max-frames` (default 60)
+- **Upload caching** — Gemini File API uploads cached in memory on retry; file only deleted on success (fixed bug where cached file was deleted on failure causing 403 on retry)
+- **Gemini fallback chain** — primary → gemini-2.5-flash → gemini-2.5-flash-lite → gemini-3.1-flash-lite → gemini-3-flash before external API fallbacks
+- `--no-compress`, `--compress-width`, `--max-frames`, `--rate-limit-rpm` CLI flags
+- `gemini-3.5-flash` model to `SUPPORTED_GEMINI_MODELS`
+
+### Changed
+
+- Default `maxRetries` reduced from 3 to 2 (upload caching makes retries cheaper)
+- Primary Gemini model defaults to `gemini-2.5-flash`
+- `gemini-2.5-pro`, `gemini-2.0-flash`, `gemini-2.0-flash-lite` removed from supported models (free tier limits are 0/0/0)
+
+### Fixed
+
+- Upload caching: cached file was deleted on failure path (finally block), causing 403 on retry; now only deleted on success
+- Pipeline `_compress_video`: missing `import subprocess` causing NameError
+- FFprobe width detection: changed from `-show_entries stream=width,height` (no codec_type filter) to `-show_streams` (includes codec_type) to avoid matching non-video streams
+
 ## [2.2.0] - 2026-05-28
 
 ### Added

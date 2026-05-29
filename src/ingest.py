@@ -324,6 +324,15 @@ def ingest_video(
                 }
             )
 
+        max_frames = options.get("max_frames", 60)
+        if len(timeline_frames) > max_frames:
+            kept = []
+            step = len(timeline_frames) / max_frames
+            for i in range(max_frames):
+                idx = min(int(i * step), len(timeline_frames) - 1)
+                kept.append(timeline_frames[idx])
+            timeline_frames = kept
+
         scene_changes = _detect_scene_changes(timeline_frames)
 
         transcript = ""

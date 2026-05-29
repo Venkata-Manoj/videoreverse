@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -11,7 +12,10 @@ from google import genai
 
 from src.blueprint_prompt import BLUEPRINT_SYSTEM_PROMPT
 from src.schemas.blueprint import UniversalBlueprint
+from utils.rate_limiter import wait_for_capacity
 from utils.retry import api_error_from_exception
+
+_upload_cache: dict[str, dict[str, Any]] = {}
 
 
 def _get_client():
@@ -167,39 +171,63 @@ async def build_blueprint(
         options = {}
 
     print("🧠 VideoReverse: Step 3 — Blueprint Synthesis (Frame-Aware)", flush=True)
-    print("📡 Uploading video to Gemini File API...", flush=True)
 
     normalized = video_path
     if not os.path.exists(normalized):
         raise FileNotFoundError(f"Video file not found: {normalized}")
 
     client = _get_client()
-    uploaded_file = None
+    uploaded_name: str | None = None
+    cache_key = os.path.abspath(normalized)
+
+    _success = False
     try:
-        uploaded_file = await client.aio.files.upload(
-            file=normalized,
-            config={"mime_type": "video/mp4"},
-        )
-        size_mb = uploaded_file.size_bytes / 1024 / 1024 if hasattr(uploaded_file, "size_bytes") else 0
-        print(f"   → Uploaded: {uploaded_file.name} ({size_mb:.1f} MB)", flush=True)
-
-        print("   → Waiting for file processing...", flush=True)
-        processing = False
-        status = uploaded_file
-        for i in range(60):
-
-            await asyncio.sleep(1)
-            status = await client.aio.files.get(name=uploaded_file.name)
+        cached = _upload_cache.get(cache_key)
+        if cached and cached.get("name"):
+            print("   → Reusing previously uploaded file...", flush=True)
+            uploaded_name = cached["name"]
+            status = await client.aio.files.get(name=cached["name"])
             if status.state == "ACTIVE":
-                print(f"   → File ready ({i + 1}s)", flush=True)
-                processing = True
-                break
-            if status.state == "FAILED":
-                error_msg = getattr(status, "error", None)
-                error_message = getattr(error_msg, "message", "unknown error") if error_msg else "unknown error"
-                raise RuntimeError(f"File processing failed: {error_message}")
-        if not processing:
-            raise RuntimeError("File processing timed out after 60s")
+                print(f"   → File ready (cached)", flush=True)
+            else:
+                print("   → Cached file not ready, waiting...", flush=True)
+                for i in range(60):
+                    await asyncio.sleep(1)
+                    status = await client.aio.files.get(name=cached["name"])
+                    if status.state == "ACTIVE":
+                        print(f"   → File ready ({i + 1}s)", flush=True)
+                        break
+                    if status.state == "FAILED":
+                        cached.pop("name", None)
+                        cached.pop("uri", None)
+                        raise RuntimeError("Cached file processing failed")
+        else:
+            print("📡 Uploading video to Gemini File API...", flush=True)
+            uploaded_obj = await client.aio.files.upload(
+                file=normalized,
+                config={"mime_type": "video/mp4"},
+            )
+            uploaded_name = uploaded_obj.name
+            size_mb = uploaded_obj.size_bytes / 1024 / 1024 if hasattr(uploaded_obj, "size_bytes") else 0
+            print(f"   → Uploaded: {uploaded_name} ({size_mb:.1f} MB)", flush=True)
+            _upload_cache[cache_key] = {"name": uploaded_name, "uri": uploaded_obj.uri}
+
+            print("   → Waiting for file processing...", flush=True)
+            processing = False
+            status = uploaded_obj
+            for i in range(60):
+                await asyncio.sleep(1)
+                status = await client.aio.files.get(name=uploaded_name)
+                if status.state == "ACTIVE":
+                    print(f"   → File ready ({i + 1}s)", flush=True)
+                    processing = True
+                    break
+                if status.state == "FAILED":
+                    error_msg = getattr(status, "error", None)
+                    error_message = getattr(error_msg, "message", "unknown error") if error_msg else "unknown error"
+                    raise RuntimeError(f"File processing failed: {error_message}")
+            if not processing:
+                raise RuntimeError("File processing timed out after 60s")
 
         metadata = step1_data.get("video_metadata", {}) if step1_data else {}
         audio = step1_data.get("audio_data", {}) if step1_data else {}
@@ -310,6 +338,17 @@ Use these as additional hints for shot boundary detection."""
         if not file_uri:
             raise RuntimeError("Gemini file is ACTIVE but has no uri — cannot run multimodal analysis")
 
+        rpm = options.get("rate_limit_rpm", 0)
+        token_overrides = {"rpm": rpm} if rpm > 0 else None
+        timeline_frames_list = timeline_frames or []
+        vid_duration = metadata.get("duration_seconds", 0) if metadata else 0
+        await wait_for_capacity(
+            model=gemini_model,
+            prompt=user_prompt,
+            timeline_frames=timeline_frames_list,
+            video_duration=vid_duration,
+            overrides=token_overrides,
+        )
         try:
             response = await client.aio.models.generate_content(
                 model=gemini_model,
@@ -396,12 +435,20 @@ Use these as additional hints for shot boundary detection."""
                     "message": "Gemini shot count differs significantly from local scene detection - verify accuracy",
                 }
 
-        return blueprint
-
-    finally:
-        if uploaded_file:
+        _success = True
+        if uploaded_name:
             try:
-                await client.aio.files.delete(name=uploaded_file.name)
+                await client.aio.files.delete(name=uploaded_name)
                 print("   → Cleaned up uploaded file from Gemini", flush=True)
             except Exception as e:
                 print(f"   → Cleanup warning: {e}", flush=True)
+        _upload_cache.pop(cache_key, None)
+
+        return blueprint
+
+    finally:
+        if uploaded_name and _success:
+            try:
+                await client.aio.files.delete(name=uploaded_name)
+            except Exception:
+                pass
