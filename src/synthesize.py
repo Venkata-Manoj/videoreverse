@@ -162,6 +162,24 @@ def _extract_motion_transitions(timeline_frames: list[dict[str, Any]] | None) ->
     return ", ".join(f"{t['timestamp']:.1f}s (frame {t['frame_index']})" for t in transitions)
 
 
+def _build_frame_parts(timeline_frames: list[dict[str, Any]]) -> list[Any]:
+    from google.genai import types
+    parts = []
+    for frame in timeline_frames:
+        path = frame.get("path")
+        if not path or not os.path.exists(path):
+            continue
+        with open(path, "rb") as f:
+            data = f.read()
+        parts.append(types.Part(
+            inline_data=types.Blob(
+                mime_type="image/jpeg",
+                data=data,
+            )
+        ))
+    return parts
+
+
 async def build_blueprint(
     video_path: str,
     step1_data: dict[str, Any] | None,
@@ -182,52 +200,55 @@ async def build_blueprint(
 
     _success = False
     try:
-        cached = _upload_cache.get(cache_key)
-        if cached and cached.get("name"):
-            print("   → Reusing previously uploaded file...", flush=True)
-            uploaded_name = cached["name"]
-            status = await client.aio.files.get(name=cached["name"])
-            if status.state == "ACTIVE":
-                print(f"   → File ready (cached)", flush=True)
+        if options.get("frames_only"):
+            print("   → Frames-only mode: sending extracted frames as inline images", flush=True)
+        else:
+            cached = _upload_cache.get(cache_key)
+            if cached and cached.get("name"):
+                print("   → Reusing previously uploaded file...", flush=True)
+                uploaded_name = cached["name"]
+                status = await client.aio.files.get(name=cached["name"])
+                if status.state == "ACTIVE":
+                    print(f"   → File ready (cached)", flush=True)
+                else:
+                    print("   → Cached file not ready, waiting...", flush=True)
+                    for i in range(60):
+                        await asyncio.sleep(1)
+                        status = await client.aio.files.get(name=cached["name"])
+                        if status.state == "ACTIVE":
+                            print(f"   → File ready ({i + 1}s)", flush=True)
+                            break
+                        if status.state == "FAILED":
+                            cached.pop("name", None)
+                            cached.pop("uri", None)
+                            raise RuntimeError("Cached file processing failed")
             else:
-                print("   → Cached file not ready, waiting...", flush=True)
+                print("📡 Uploading video to Gemini File API...", flush=True)
+                uploaded_obj = await client.aio.files.upload(
+                    file=normalized,
+                    config={"mime_type": "video/mp4"},
+                )
+                uploaded_name = uploaded_obj.name
+                size_mb = uploaded_obj.size_bytes / 1024 / 1024 if hasattr(uploaded_obj, "size_bytes") else 0
+                print(f"   → Uploaded: {uploaded_name} ({size_mb:.1f} MB)", flush=True)
+                _upload_cache[cache_key] = {"name": uploaded_name, "uri": uploaded_obj.uri}
+
+                print("   → Waiting for file processing...", flush=True)
+                processing = False
+                status = uploaded_obj
                 for i in range(60):
                     await asyncio.sleep(1)
-                    status = await client.aio.files.get(name=cached["name"])
+                    status = await client.aio.files.get(name=uploaded_name)
                     if status.state == "ACTIVE":
                         print(f"   → File ready ({i + 1}s)", flush=True)
+                        processing = True
                         break
                     if status.state == "FAILED":
-                        cached.pop("name", None)
-                        cached.pop("uri", None)
-                        raise RuntimeError("Cached file processing failed")
-        else:
-            print("📡 Uploading video to Gemini File API...", flush=True)
-            uploaded_obj = await client.aio.files.upload(
-                file=normalized,
-                config={"mime_type": "video/mp4"},
-            )
-            uploaded_name = uploaded_obj.name
-            size_mb = uploaded_obj.size_bytes / 1024 / 1024 if hasattr(uploaded_obj, "size_bytes") else 0
-            print(f"   → Uploaded: {uploaded_name} ({size_mb:.1f} MB)", flush=True)
-            _upload_cache[cache_key] = {"name": uploaded_name, "uri": uploaded_obj.uri}
-
-            print("   → Waiting for file processing...", flush=True)
-            processing = False
-            status = uploaded_obj
-            for i in range(60):
-                await asyncio.sleep(1)
-                status = await client.aio.files.get(name=uploaded_name)
-                if status.state == "ACTIVE":
-                    print(f"   → File ready ({i + 1}s)", flush=True)
-                    processing = True
-                    break
-                if status.state == "FAILED":
-                    error_msg = getattr(status, "error", None)
-                    error_message = getattr(error_msg, "message", "unknown error") if error_msg else "unknown error"
-                    raise RuntimeError(f"File processing failed: {error_message}")
-            if not processing:
-                raise RuntimeError("File processing timed out after 60s")
+                        error_msg = getattr(status, "error", None)
+                        error_message = getattr(error_msg, "message", "unknown error") if error_msg else "unknown error"
+                        raise RuntimeError(f"File processing failed: {error_message}")
+                if not processing:
+                    raise RuntimeError("File processing timed out after 60s")
 
         metadata = step1_data.get("video_metadata", {}) if step1_data else {}
         audio = step1_data.get("audio_data", {}) if step1_data else {}
@@ -332,16 +353,10 @@ Use these as additional hints for shot boundary detection."""
 
         from google.genai import types
 
-        active_file = status
-        file_uri = active_file.uri
-        mime_type = active_file.mime_type or "video/mp4"
-        if not file_uri:
-            raise RuntimeError("Gemini file is ACTIVE but has no uri — cannot run multimodal analysis")
-
         rpm = options.get("rate_limit_rpm", 0)
         token_overrides = {"rpm": rpm} if rpm > 0 else None
         timeline_frames_list = timeline_frames or []
-        vid_duration = metadata.get("duration_seconds", 0) if metadata else 0
+        vid_duration = 0 if options.get("frames_only") else (metadata.get("duration_seconds", 0) if metadata else 0)
         await wait_for_capacity(
             model=gemini_model,
             prompt=user_prompt,
@@ -349,18 +364,31 @@ Use these as additional hints for shot boundary detection."""
             video_duration=vid_duration,
             overrides=token_overrides,
         )
+
+        if options.get("frames_only"):
+            frame_parts = _build_frame_parts(timeline_frames)
+            contents_parts = [types.Part(text=user_prompt)] + frame_parts
+            print(f"   → Send {len(frame_parts)} frames as inline images ({len(timeline_frames)} in timeline)", flush=True)
+        else:
+            active_file = status
+            file_uri = active_file.uri
+            mime_type = active_file.mime_type or "video/mp4"
+            if not file_uri:
+                raise RuntimeError("Gemini file is ACTIVE but has no uri — cannot run multimodal analysis")
+            contents_parts = [
+                types.Part(text=user_prompt),
+                types.Part(
+                    file_data=types.FileData(file_uri=file_uri, mime_type=mime_type),
+                ),
+            ]
+
         try:
             response = await client.aio.models.generate_content(
                 model=gemini_model,
                 contents=[
                     types.Content(
                         role="user",
-                        parts=[
-                            types.Part(text=user_prompt),
-                            types.Part(
-                                file_data=types.FileData(file_uri=file_uri, mime_type=mime_type),
-                            ),
-                        ],
+                        parts=contents_parts,
                     )
                 ],
                 config=types.GenerateContentConfig(

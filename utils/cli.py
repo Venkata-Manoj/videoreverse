@@ -51,6 +51,7 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
         "no_transcribe": False,
         "wsl_mode": None,
         "gemini_model": "gemini-2.5-flash",
+        "frames_only": False,
         "mock": False,
     }
 
@@ -183,6 +184,9 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
             elif i < len(args):
                 raise ValueError(f'Invalid Gemini model "{args[i]}". Use: {", ".join(SUPPORTED_GEMINI_MODELS)}')
 
+        elif arg in ("--frames-only", "--no-file-api"):
+            result["frames_only"] = True
+
         elif arg == "--mock":
             result["mock"] = True
 
@@ -235,12 +239,16 @@ Options:
   --win                Force Windows path mode
   --rate-limit-rpm     Max API requests per minute (default: 5, for free tier; set higher for paid)
   --gemini-model       Gemini model for analysis: {", ".join(SUPPORTED_GEMINI_MODELS)} (default: gemini-2.5-flash)
+  --frames-only        Send extracted frames as inline images instead of uploading the full
+                        video via Gemini File API. Token cost bounded by --max-frames regardless
+                        of video duration. Reduces latency and 429/503 risk for long videos.
+  --no-file-api         Alias for --frames-only
   --mock               Skip API calls, generate a synthetic blueprint from metadata (zero cost)
- 
+
 Examples:
-  python -m src.main /mnt/e/vidrev/test1.mp4
-  python -m src.main E:\\vidrev\\test1.mp4 --model runway_gen4_5,google_veo3_1
-  python -m src.main /mnt/e/vidrev/test1.mp4 --format txt --verbose
+  python -m src.main test1.mp4
+  python -m src.main test1.mp4 --model runway_gen4_5,google_veo3_1
+  python -m src.main test1.mp4 --format txt --verbose
   python -m src.main https://example.com/video.mp4 --dry-run
 """
     print(help_text)

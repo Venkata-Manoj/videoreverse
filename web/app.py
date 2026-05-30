@@ -69,6 +69,7 @@ def _build_options(video_path: str, models: list[str] | None) -> dict[str, objec
         "gemini_model": request.form.get("gemini_model") or "gemini-2.5-flash",
         "no_cache": request.form.get("no_cache") == "true",
         "no_transcribe": request.form.get("no_transcribe") == "true",
+        "frames_only": request.form.get("frames_only") == "true",
     }
 
 

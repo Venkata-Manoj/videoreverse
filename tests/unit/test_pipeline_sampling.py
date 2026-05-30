@@ -159,3 +159,21 @@ async def test_pipeline_full_mode_passes_original_path(base_options: dict) -> No
         mock_ingest.assert_called_once()
         assert mock_ingest.call_args[0][0] == SAMPLE_RESULT["path"]
         assert output["_meta"]["sampling"] == SAMPLE_RESULT
+
+
+@pytest.mark.anyio
+async def test_pipeline_passes_frames_only_option(base_options: dict) -> None:
+    options = {**base_options, "frames_only": True}
+
+    with (
+        patch("src.pipeline.sample_video", return_value=SAMPLE_RESULT) as mock_sample,
+        patch("src.pipeline.cleanup_sample") as mock_cleanup,
+        patch("src.pipeline.ingest_video", return_value=INGEST_RESULT) as mock_ingest,
+        patch("src.pipeline.build_blueprint", new_callable=AsyncMock, return_value=BLUEPRINT_RESULT) as mock_build,
+        patch("src.pipeline.compile_prompts", return_value={}) as mock_compile,
+    ):
+        output = await run_pipeline(options)
+
+        mock_build.assert_called_once()
+        _call_options = mock_build.call_args[0][2]
+        assert _call_options.get("frames_only") is True

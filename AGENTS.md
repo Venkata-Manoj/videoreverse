@@ -103,7 +103,7 @@ web/
 
 - `src/main.py` — CLI entry point. Use `python -m src.main --help` for options.
 - `src/pipeline.py` — Orchestrator. Accepts any video path/URL. Saves to `output_blueprints/`.
-- `src/synthesize.py` — Uses Gemini File API. Cleans up after analysis.
+- `src/synthesize.py` — Uses Gemini File API (default) or frames-only inline images (with `--frames-only`). Cleans up after analysis.
 - `src/synthesize_free_api.py` — Free fallback backends (OpenRouter + NVIDIA NIM).
 - `schemas/blueprint.py` — Pydantic V2 models for UniversalBlueprint, used by validation and responseSchema generation.
 - `config/prompt_templates.json` — Add new models here. Each entry: `label`, `template` (placeholders: `{camera}`, `{framing}`, `{style}`, `{action}`, `{environment}`, `{lighting}`, `{color_grading}`, `{duration}`, `{negative}`, `{aspect_ratio}`), `supports_negative`, `max_duration`, `aspect_ratio_support`, `enhancement_rules`.
@@ -135,6 +135,10 @@ Options:
   --win                Force Windows path mode
   --gemini-model       Gemini model: gemini-2.5-flash, gemini-2.5-flash-lite, gemini-3.5-flash, gemini-3.1-flash-lite, gemini-3-flash, gemini-flash-latest, gemini-flash-lite-latest
   --rate-limit-rpm     Max API requests per minute (default: 5 for free tier)
+  --frames-only        Send extracted frames as inline images instead of full video upload.
+                        Token cost bounded by --max-frames regardless of duration. No 429/503
+                        from large uploads. Use for long videos to avoid rate limits.
+  --no-file-api         Alias for --frames-only
   --mock               Skip API calls, generate synthetic blueprint from metadata
   --help, -h           Show help
 ```

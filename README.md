@@ -140,6 +140,8 @@ Limits are enforced by the sliding window rate limiter (`utils/rate_limiter.py`)
 | `--rate-limit-rpm` | Max API requests per minute | `5` |
 | `--gemini-model` | Gemini model for analysis | `gemini-2.5-flash` |
 | `--mock` | Skip API calls, synthetic blueprint | `false` |
+| `--frames-only` | Send frames as inline images instead of uploading full video via File API. Token cost bounded by `--max-frames` | `false` |
+| `--no-file-api` | Alias for `--frames-only` | `false` |
 | `--wsl` | Force WSL path conversion | Auto |
 | `--win` | Force Windows path mode | Auto |
 
@@ -147,7 +149,7 @@ Limits are enforced by the sliding window rate limiter (`utils/rate_limiter.py`)
 
 ## 🏗️ Architecture
 
-```
+```text
 ┌─────────────┐     ┌─────────────┐     ┌──────────────────┐     ┌─────────────┐     ┌─────────────┐
 │   Video     │────▶│   Ingest    │────▶│   Synthesize     │────▶│   Compile   │────▶│   Export    │
 │   Input     │     │   (ffmpeg)  │     │  (Gemini chain)  │     │  (Templates)│     │ (JSON/TXT)  │
@@ -274,7 +276,7 @@ git push origin feature/my-feature
 
 ### Commit Message Format
 
-```
+```text
 type(scope): description
 
 Types: feat, fix, docs, refactor, test, chore
@@ -293,6 +295,7 @@ MIT License — see [LICENSE](./LICENSE) for details.
 See [SECURITY.md](./SECURITY.md) for vulnerability reporting.
 
 **Key practices:**
+
 - Never commit `.env` files
 - Rotate `GEMINI_API_KEY` regularly
 - Use `.env.example` as template
@@ -307,7 +310,7 @@ See [SECURITY.md](./SECURITY.md) for vulnerability reporting.
 
 ## 🗂️ Project Structure
 
-```
+```text
 videoreverse/
 ├── src/                  # Source code
 │   ├── main.py           # CLI entry point
