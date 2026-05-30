@@ -28,16 +28,33 @@ def score_blur(image_path: str) -> float | None:
     return score
 
 
-def filter_blurry_frames(frames: list[dict[str, Any]], threshold: float = 100.0) -> list[dict[str, Any]]:
+def _is_motion_blur_transient(scored: list[dict[str, Any]], idx: int, threshold: float) -> bool:
+    """Check if a blurry high-motion frame is a transient (fast pan/zoom artifact).
+    Returns True if both adjacent frames are significantly sharper."""
+    if idx <= 0 or idx >= len(scored) - 1:
+        return False
+    prev_score = scored[idx - 1].get("blur_score", 0)
+    next_score = scored[idx + 1].get("blur_score", 0)
+    curr_score = scored[idx].get("blur_score", 0)
+    return prev_score >= threshold and next_score >= threshold and curr_score < threshold
+
+
+def filter_blurry_frames(
+    frames: list[dict[str, Any]],
+    threshold: float = 100.0,
+    aggressive: bool = False,
+) -> list[dict[str, Any]]:
     """
     Dual-signal filter:
     - Drop frames that are blurry (score < threshold) AND not high-motion.
     - Safety guard: if filtering leaves < 2 frames, restore originals.
     - Adds `blur_score` to each frame's metadata.
     - Gracefully no-ops if cv2 unavailable (warns once, returns originals).
+    - When aggressive=True, also drops blurry high-motion frames that are likely
+      transient motion-blur artifacts (both neighbors are sharp).
     """
     if not _HAS_CV2:
-        print("   \u2192 opencv-python-headless not installed, skipping blur filtering", flush=True)
+        print("   → opencv-python-headless not installed, skipping blur filtering", flush=True)
         return frames
 
     if threshold <= 0:
@@ -55,11 +72,18 @@ def filter_blurry_frames(frames: list[dict[str, Any]], threshold: float = 100.0)
             f["blur_score"] = 0.0
         scored.append(f)
 
-    kept = [f for f in scored if f.get("blur_score", 0) >= threshold or f.get("motion_level") == "high"]
+    kept: list[dict[str, Any]] = []
+    for i, f in enumerate(scored):
+        score = f.get("blur_score", 0)
+        is_sharp = score >= threshold
+        is_high_motion = f.get("motion_level") == "high"
+        is_transient = aggressive and is_high_motion and _is_motion_blur_transient(scored, i, threshold)
+        if is_sharp or (is_high_motion and not is_transient):
+            kept.append(f)
 
     if len(kept) < 2:
         print(
-            f"   \u2192 Only {len(kept)} frame(s) survived blur filter \u2014 restoring all {len(scored)} originals",
+            f"   → Only {len(kept)} frame(s) survived blur filter — restoring all {len(scored)} originals",
             flush=True,
         )
         return scored

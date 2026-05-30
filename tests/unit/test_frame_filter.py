@@ -120,6 +120,40 @@ def test_filter_threshold_zero() -> None:
         assert len(result) == 1
 
 
+def test_aggressive_filter_drops_transient() -> None:
+    with tempfile.TemporaryDirectory() as d:
+        sharp_a = os.path.join(d, "sharp_a.jpg")
+        blurry_mid = os.path.join(d, "blurry_mid.jpg")
+        sharp_b = os.path.join(d, "sharp_b.jpg")
+        _make_test_image(sharp_a, blur_kernel=0)
+        _make_test_image(blurry_mid, blur_kernel=15)
+        _make_test_image(sharp_b, blur_kernel=0)
+        frames = [
+            {"index": 0, "path": sharp_a, "motion_level": "high"},
+            {"index": 1, "path": blurry_mid, "motion_level": "high"},
+            {"index": 2, "path": sharp_b, "motion_level": "high"},
+        ]
+        non_aggressive = filter_blurry_frames(frames, threshold=500, aggressive=False)
+        aggressive = filter_blurry_frames(frames, threshold=500, aggressive=True)
+        assert len(non_aggressive) == 3
+        assert len(aggressive) == 2
+        assert all(f["index"] in (0, 2) for f in aggressive)
+
+
+def test_aggressive_filter_edge_no_left() -> None:
+    with tempfile.TemporaryDirectory() as d:
+        blurry = os.path.join(d, "blurry.jpg")
+        sharp = os.path.join(d, "sharp.jpg")
+        _make_test_image(blurry, blur_kernel=15)
+        _make_test_image(sharp, blur_kernel=0)
+        frames = [
+            {"index": 0, "path": blurry, "motion_level": "high"},
+            {"index": 1, "path": sharp, "motion_level": "low"},
+        ]
+        result = filter_blurry_frames(frames, threshold=500, aggressive=True)
+        assert len(result) == 2
+
+
 def test_score_blur_nonexistent_file() -> None:
     score = score_blur("/nonexistent/image.jpg")
     assert score is None

@@ -469,9 +469,13 @@ function buildFormData(files) {
   if (document.getElementById("use-fallback").checked) form.append("use_fallback", "true");
   if (document.getElementById("no-cache").checked) form.append("no_cache", "true");
   if (document.getElementById("no-transcribe").checked) form.append("no_transcribe", "true");
+  if (document.getElementById("aggressive-blur").checked) form.append("aggressive_blur_filter", "true");
 
   const maxDuration = document.getElementById("max-duration").value;
   if (maxDuration) form.append("max_duration", maxDuration);
+
+  const blurThreshold = document.getElementById("blur-threshold").value;
+  if (blurThreshold && parseInt(blurThreshold) !== 100) form.append("blur_threshold", blurThreshold);
 
   const selectedModels = collectSelectedModels();
   if (selectedModels.length) form.append("models", selectedModels.join(","));
@@ -568,9 +572,13 @@ async function startUrlJob() {
   if (document.getElementById("use-fallback").checked) form.append("use_fallback", "true");
   if (document.getElementById("no-cache").checked) form.append("no_cache", "true");
   if (document.getElementById("no-transcribe").checked) form.append("no_transcribe", "true");
+  if (document.getElementById("aggressive-blur").checked) form.append("aggressive_blur_filter", "true");
 
   const maxDuration = document.getElementById("max-duration").value;
   if (maxDuration) form.append("max_duration", maxDuration);
+
+  const blurThreshold = document.getElementById("blur-threshold").value;
+  if (blurThreshold && parseInt(blurThreshold) !== 100) form.append("blur_threshold", blurThreshold);
 
   const selectedModels = collectSelectedModels();
   if (selectedModels.length) form.append("models", selectedModels.join(","));
@@ -781,6 +789,8 @@ function rerunHistoryJob(index) {
   if (opts.max_duration) document.getElementById("max-duration").value = opts.max_duration;
   if (opts.no_cache) document.getElementById("no-cache").checked = true;
   if (opts.no_transcribe) document.getElementById("no-transcribe").checked = true;
+  if (opts.blur_threshold) document.getElementById("blur-threshold").value = opts.blur_threshold;
+  if (opts.aggressive_blur_filter) document.getElementById("aggressive-blur").checked = true;
 
   if (opts.models && Array.isArray(opts.models)) {
     modelGrid.querySelectorAll("input[type=checkbox]").forEach((cb) => {
@@ -1141,6 +1151,8 @@ handleProgress = function (data) {
       max_duration: document.getElementById("max-duration").value || "",
       no_cache: document.getElementById("no-cache").checked,
       no_transcribe: document.getElementById("no-transcribe").checked,
+      blur_threshold: document.getElementById("blur-threshold").value || "",
+      aggressive_blur_filter: document.getElementById("aggressive-blur").checked,
       models: collectSelectedModels(),
     }, currentOutput, data.files || {});
   }

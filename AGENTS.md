@@ -173,6 +173,15 @@ After I-frame extraction, each frame is scored for sharpness using Laplacian var
 unless they have high motion level (motion blur is intentional). Falls back gracefully
 if opencv-python-headless is not installed.
 
+**OpenCV Import Latency:** The first `import cv2` incurs ~200–500ms cold-start overhead
+(due to native library loading). This is a one-time cost per process — subsequent
+imports are instant. No impact on pipeline throughput for batch processing.
+
+### Aggressive Blur Filter (optional, --aggressive-blur-filter)
+When enabled, also drops blurry-high-motion frames where both adjacent frames are sharp.
+These are typically transient pan/zoom artifacts — intentional camera movement that
+creates a momentary blur. Only meaningful with --blur-threshold (default 100).
+
 ## Error Codes
 
 | Code | Description |

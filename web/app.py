@@ -76,6 +76,7 @@ def _build_options(video_path: str, models: list[str] | None) -> dict[str, objec
         "no_transcribe": request.form.get("no_transcribe") == "true",
         "frames_only": request.form.get("frames_only") == "true",
         "blur_threshold": blur_threshold,
+        "aggressive_blur_filter": request.form.get("aggressive_blur_filter") == "true",
     }
 
 

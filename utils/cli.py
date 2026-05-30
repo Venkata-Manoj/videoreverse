@@ -54,6 +54,7 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
         "frames_only": False,
         "mock": False,
         "blur_threshold": 100,
+        "aggressive_blur_filter": False,
     }
 
     i = 0
@@ -201,6 +202,9 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
                 except ValueError:
                     pass
 
+        elif arg == "--aggressive-blur-filter":
+            result["aggressive_blur_filter"] = True
+
         else:
             if not arg.startswith("-") and result["video_path"] is None:
                 result["video_path"] = arg
@@ -257,6 +261,10 @@ Options:
   --blur-threshold FLOAT  Minimum sharpness score (Laplacian variance normalized).
                             Higher = stricter. Default 100 works for 720p-4K.
                             Set 0 to disable. High-motion frames always preserved.
+  --aggressive-blur-filter
+                            Also drop blurry high-motion frames when both neighbors are
+                            sharp (transient pan/zoom artifacts). Only meaningful with
+                            --blur-threshold (default 100).
   --mock               Skip API calls, generate a synthetic blueprint from metadata (zero cost)
 
 Examples:

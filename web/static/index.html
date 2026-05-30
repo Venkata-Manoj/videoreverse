@@ -91,12 +91,20 @@
              <input type="checkbox" id="no-cache" />
              Bypass cached blueprints
            </label>
-           <label class="checkbox">
-             <input type="checkbox" id="no-transcribe" />
-             Skip local Whisper transcription
-           </label>
-         </div>
-       </details>
+            <label class="checkbox">
+              <input type="checkbox" id="no-transcribe" />
+              Skip local Whisper transcription
+            </label>
+            <label>
+              Blur threshold
+              <input type="number" id="blur-threshold" min="0" step="1" value="100" placeholder="Default: 100" />
+            </label>
+            <label class="checkbox">
+              <input type="checkbox" id="aggressive-blur" />
+              Aggressive blur filter (drop motion-blur transients)
+            </label>
+          </div>
+        </details>
        
        <!-- Upload Progress Bar -->
        <div id="upload-progress" class="upload-progress hidden">
