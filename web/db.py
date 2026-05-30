@@ -8,8 +8,10 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from src.path_resolver import get_root
 
-DEFAULT_DB_PATH = ".cache/videoreverse.db"
+
+DEFAULT_DB_PATH = f"{get_root()}/.cache/videoreverse.db"
 
 
 def _get_db_path() -> str:

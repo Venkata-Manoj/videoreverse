@@ -15,6 +15,7 @@ from utils.cli import (
     SUPPORTED_SAMPLE_MODES,
     detect_environment,
 )
+from src.path_resolver import get_config_path, get_root
 from utils.downloader import download_video, is_valid_video_url
 from utils.error_codes import VRError
 from utils.logger import info
@@ -24,7 +25,7 @@ load_dotenv()
 
 WEB_DIR = Path(__file__).resolve().parent
 STATIC_DIR = WEB_DIR / "static"
-UPLOAD_DIR = Path(os.environ.get("VIDEO_REV_WEB_UPLOAD_DIR", ".cache/web_uploads"))
+UPLOAD_DIR = Path(os.environ.get("VIDEO_REV_WEB_UPLOAD_DIR", f"{get_root()}/.cache/web_uploads"))
 MAX_UPLOAD_MB = int(os.environ.get("VIDEO_REV_WEB_MAX_MB", "500"))
 
 app = Flask(__name__, static_folder=str(STATIC_DIR), static_url_path="/static")
@@ -99,7 +100,7 @@ def health() -> Response:
 
 @app.get("/api/config")
 def config() -> Response:
-    templates_path = Path("config/prompt_templates.json")
+    templates_path = Path(get_config_path("prompt_templates.json"))
     labels: dict[str, str] = {}
     if templates_path.exists():
         with open(templates_path, encoding="utf-8") as f:
@@ -261,7 +262,7 @@ def download_artifact(job_id: str, artifact: str) -> Response:
 
 @app.route("/api/templates", methods=["GET"])
 def get_templates() -> Response:
-    templates_path = Path("config/prompt_templates.json")
+    templates_path = Path(get_config_path("prompt_templates.json"))
     if not templates_path.exists():
         return jsonify({"error": "Templates file not found"}), 404
     with open(templates_path, encoding="utf-8") as f:
@@ -276,7 +277,7 @@ def get_templates() -> Response:
 
 @app.route("/api/templates/<model_id>", methods=["GET"])
 def get_template(model_id: str) -> Response:
-    templates_path = Path("config/prompt_templates.json")
+    templates_path = Path(get_config_path("prompt_templates.json"))
     if not templates_path.exists():
         return jsonify({"error": "Templates file not found"}), 404
     with open(templates_path, encoding="utf-8") as f:
@@ -288,7 +289,7 @@ def get_template(model_id: str) -> Response:
 
 @app.route("/api/templates/<model_id>", methods=["PUT"])
 def update_template(model_id: str) -> Response:
-    templates_path = Path("config/prompt_templates.json")
+    templates_path = Path(get_config_path("prompt_templates.json"))
     if not templates_path.exists():
         return jsonify({"error": "Templates file not found"}), 404
 
