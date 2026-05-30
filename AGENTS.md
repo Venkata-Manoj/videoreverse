@@ -139,6 +139,9 @@ Options:
                         Token cost bounded by --max-frames regardless of duration. No 429/503
                         from large uploads. Use for long videos to avoid rate limits.
   --no-file-api         Alias for --frames-only
+  --blur-threshold FLOAT  Minimum sharpness score (Laplacian variance normalized).
+                            Higher = stricter. Default 100 works for 720p-4K.
+                            Set 0 to disable. High-motion frames always preserved.
   --mock               Skip API calls, generate synthetic blueprint from metadata
   --help, -h           Show help
 ```
@@ -163,6 +166,12 @@ Reduces API cost by 50-90% for long videos.
 - `--sample-mode first-n --max-duration 30` → clip first 30s
 - `--sample-mode highlights --max-duration 30` → extract 30s of highest-motion segments
 - Cost estimate: ~$0.001/second for Gemini 2.5 Flash
+
+### Frame Blur Filtering (optional, requires opencv-python-headless)
+After I-frame extraction, each frame is scored for sharpness using Laplacian variance
+(normalized by resolution). Frames below --blur-threshold (default 100) are dropped
+unless they have high motion level (motion blur is intentional). Falls back gracefully
+if opencv-python-headless is not installed.
 
 ## Error Codes
 

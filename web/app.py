@@ -57,6 +57,11 @@ def _build_options(video_path: str, models: list[str] | None) -> dict[str, objec
     except ValueError:
         max_duration = None
 
+    try:
+        blur_threshold = float(request.form.get("blur_threshold", 100))
+    except (ValueError, TypeError):
+        blur_threshold = 100
+
     return {
         "video_path": video_path,
         "models": models,
@@ -70,6 +75,7 @@ def _build_options(video_path: str, models: list[str] | None) -> dict[str, objec
         "no_cache": request.form.get("no_cache") == "true",
         "no_transcribe": request.form.get("no_transcribe") == "true",
         "frames_only": request.form.get("frames_only") == "true",
+        "blur_threshold": blur_threshold,
     }
 
 

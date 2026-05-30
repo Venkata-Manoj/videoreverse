@@ -67,7 +67,9 @@ def _build_frame_context(timeline_frames: list[dict[str, Any]]) -> str:
     for frame in timeline_frames[:20]:
         ts = f"{frame.get('timestamp_seconds', 0):.2f}"
         motion = frame.get("motion_level", "medium")
-        lines.append(f"    [{frame['index']}] @ {ts}s - {motion}")
+        blur = frame.get("blur_score")
+        blur_str = f" (blur: {blur:.1f})" if blur is not None else ""
+        lines.append(f"    [{frame['index']}] @ {ts}s - {motion}{blur_str}")
 
     if len(timeline_frames) > 20:
         lines.append(f"    ... and {len(timeline_frames) - 20} more frames")
@@ -423,6 +425,7 @@ Use these as additional hints for shot boundary detection."""
                     "index": f["index"],
                     "timestamp_seconds": f.get("timestamp_seconds", 0),
                     "motion_level": f.get("motion_level", "medium"),
+                    "blur_score": f.get("blur_score"),
                 }
                 for f in timeline_frames
             ],

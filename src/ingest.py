@@ -324,6 +324,15 @@ def ingest_video(
                 }
             )
 
+        from utils.frame_filter import filter_blurry_frames
+
+        blur_threshold = options.get("blur_threshold", 100)
+        frames_before = len(timeline_frames)
+        timeline_frames = filter_blurry_frames(timeline_frames, blur_threshold)
+        frames_filtered = frames_before - len(timeline_frames)
+        if frames_filtered:
+            print(f"   \u2192 Filtered {frames_filtered} blurry frames (kept {len(timeline_frames)})", flush=True)
+
         max_frames = options.get("max_frames", 60)
         if len(timeline_frames) > max_frames:
             kept = []
@@ -391,6 +400,7 @@ def ingest_video(
                 "motion_signal_level": "medium",
                 "frames_emitted": len(timeline_frames),
                 "frames_deduped": len(timeline_frames),
+                "frames_filtered": frames_filtered,
                 "elapsed_ms": 0,
             },
             "timeline_frames": timeline_frames,

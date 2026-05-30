@@ -53,6 +53,7 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
         "gemini_model": "gemini-2.5-flash",
         "frames_only": False,
         "mock": False,
+        "blur_threshold": 100,
     }
 
     i = 0
@@ -190,6 +191,16 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
         elif arg == "--mock":
             result["mock"] = True
 
+        elif arg == "--blur-threshold":
+            i += 1
+            if i < len(args):
+                try:
+                    t = float(args[i])
+                    if t >= 0:
+                        result["blur_threshold"] = t
+                except ValueError:
+                    pass
+
         else:
             if not arg.startswith("-") and result["video_path"] is None:
                 result["video_path"] = arg
@@ -243,6 +254,9 @@ Options:
                         video via Gemini File API. Token cost bounded by --max-frames regardless
                         of video duration. Reduces latency and 429/503 risk for long videos.
   --no-file-api         Alias for --frames-only
+  --blur-threshold FLOAT  Minimum sharpness score (Laplacian variance normalized).
+                            Higher = stricter. Default 100 works for 720p-4K.
+                            Set 0 to disable. High-motion frames always preserved.
   --mock               Skip API calls, generate a synthetic blueprint from metadata (zero cost)
 
 Examples:

@@ -142,6 +142,7 @@ Limits are enforced by the sliding window rate limiter (`utils/rate_limiter.py`)
 | `--mock` | Skip API calls, synthetic blueprint | `false` |
 | `--frames-only` | Send frames as inline images instead of uploading full video via File API. Token cost bounded by `--max-frames` | `false` |
 | `--no-file-api` | Alias for `--frames-only` | `false` |
+| `--blur-threshold` | Minimum sharpness score (Laplacian variance). Higher=stricter. 0=disable. | `100` |
 | `--wsl` | Force WSL path conversion | Auto |
 | `--win` | Force Windows path mode | Auto |
 
