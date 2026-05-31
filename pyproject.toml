@@ -42,7 +42,10 @@ whisper = [
 [project.urls]
 Homepage = "https://github.com/Venkata-Manoj/videoreverse"
 Repository = "https://github.com/Venkata-Manoj/videoreverse"
+Documentation = "https://github.com/Venkata-Manoj/videoreverse/tree/main/docs"
+Changelog = "https://github.com/Venkata-Manoj/videoreverse/blob/main/CHANGELOG.md"
 Issues = "https://github.com/Venkata-Manoj/videoreverse/issues"
+Discussions = "https://github.com/Venkata-Manoj/videoreverse/discussions"
 
 [project.scripts]
 vidrev = "src.main:main"

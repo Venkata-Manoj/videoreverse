@@ -1,8 +1,11 @@
 # syntax=docker/dockerfile:1
 FROM python:3.12-slim
 
-LABEL maintainer="VideoReverse"
-LABEL description="Universal Video-to-Prompt Pipeline"
+LABEL maintainer="Venkata-Manoj"
+LABEL description="Universal Video-to-Prompt Pipeline — deconstruct any video into AI prompts for 8+ models"
+LABEL org.opencontainers.image.source="https://github.com/Venkata-Manoj/videoreverse"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.documentation="https://github.com/Venkata-Manoj/videoreverse/tree/main/docs"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
