@@ -133,7 +133,7 @@ This loop was especially important for the AI fallback chain. Getting the retry 
 
 ### Pydantic V2 + responseSchema
 
-The decision to use Pydantic V2's `model_json_schema()` method to generate a Gemini `responseSchema` was the single most important architectural choice. It means:
+The decision to use Pydantic V2's `model_json_schema()` method to generate a Gemini `responseSchema` was the single most important architectural choice. The Codex agent helped explore this approach early in development, implementing a prototype that proved the concept before full integration. It means:
 
 - Gemini is constrained to output valid JSON matching the schema at the API level
 - The pipeline never needs to parse, extract, or heuristically fix malformed JSON
@@ -186,7 +186,7 @@ Production AI pipelines cannot depend on a single vendor. Rate limits, service o
 - **Schema-first design prevents downstream chaos.** Defining the `UniversalBlueprint` Pydantic model before building the pipeline around it caught interface mismatches early and kept every module aligned.
 - **Multi-model fallback is essential for production AI pipelines.** Single-vendor dependency is a reliability risk. A four-tier chain with automatic fallback ensures the pipeline always produces output, even during API outages.
 - **Frame capping + compression = 50–90% cost reduction.** The combination of smart sampling, video compression, and frame bounding transforms the economics of video AI analysis. What would cost dollars per run costs pennies.
-- **AI coding assistants dramatically accelerate iteration speed.** The time from "I want a feature that does X" to "here is a working implementation with tests" dropped from hours to minutes. The key is clear specification and active human review — AI tools amplify human productivity but do not replace it.
+- **Claude/Codex via opencode dramatically accelerated iteration speed.** The time from "I want a feature that does X" to "here is a working implementation with tests" dropped from hours to minutes. The key is clear specification and active human review — AI tools amplify human productivity but do not replace it.
 - **Testing prompt templates against real model outputs is critical.** A template that looks good in theory may produce garbled output when filled with real blueprint data. Each template must be tested with diverse video types (CGI, drone, anime, vlog) to uncover edge cases.
 - **Exponential backoff with upload caching prevents wasted API costs.** If Gemini returns a transient error (503/429), the uploaded file URI is cached and reused on retry rather than re-uploaded. This saved substantial time and bandwidth during development.
 - **The sliding window rate limiter must be tuned per model.** Each Gemini model has different RPM, TPM, and RPD limits. Trying to use a single rate limit configuration across all models causes unnecessary fallback activation. The `config/model_limits.json` file encodes per-model limits that the rate limiter reads dynamically.
@@ -224,4 +224,4 @@ VideoReverse is an open-source project. The complete source code is available on
 
 Whether the goal is to add a new video model template, improve the AI analysis prompt, optimize the frame extraction pipeline, or fix a bug — the project is designed to be easy to extend. The modular architecture, schema-first design, and config-driven template system mean that most features can be added by editing a config file or adding a new module without touching the rest of the pipeline.
 
-If you find VideoReverse useful, consider starring the repository. It helps others discover the project. Bug reports, feature requests, and pull requests are all appreciated. The project was built with AI, for an AI-driven use case, but the engineering principles behind it are universal: define clear contracts, fail gracefully, optimize ruthlessly, and iterate quickly.
+If you find VideoReverse useful, consider starring the repository. It helps others discover the project. Bug reports, feature requests, and pull requests are all appreciated. The project was built with AI (via Claude/Codex on opencode), for an AI-driven use case, but the engineering principles behind it are universal: define clear contracts, fail gracefully, optimize ruthlessly, and iterate quickly.
