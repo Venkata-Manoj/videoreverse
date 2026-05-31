@@ -1,0 +1,93 @@
+<svg width="1280" height="640" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="640" fill="url(#bg)"/>
+
+  <!-- Accent bar top -->
+  <rect width="1280" height="6" fill="url(#accent)"/>
+
+  <!-- Grid pattern -->
+  <g opacity="0.03">
+    <line x1="0" y1="160" x2="1280" y2="160" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="320" x2="1280" y2="320" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="480" x2="1280" y2="480" stroke="#fff" stroke-width="1"/>
+    <line x1="320" y1="0" x2="320" y2="640" stroke="#fff" stroke-width="1"/>
+    <line x1="640" y1="0" x2="640" y2="640" stroke="#fff" stroke-width="1"/>
+    <line x1="960" y1="0" x2="960" y2="640" stroke="#fff" stroke-width="1"/>
+  </g>
+
+  <!-- Title -->
+  <text x="80" y="200" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="800" fill="#ffffff" letter-spacing="-1">VideoReverse</text>
+
+  <!-- Tagline -->
+  <text x="80" y="270" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#94a3b8" font-weight="400">
+    Universal Video-to-Prompt Pipeline
+  </text>
+
+  <!-- Description -->
+  <text x="80" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="20" fill="#64748b">
+    <tspan x="80" dy="0">Deconstruct any video → universal blueprint →</tspan>
+    <tspan x="80" dy="32">model-specific prompts for 8+ video AI models</tspan>
+  </text>
+
+  <!-- Model badges -->
+  <g transform="translate(80, 440)">
+    <rect x="0" y="0" width="120" height="36" rx="18" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="60" y="23" font-family="system-ui, sans-serif" font-size="13" fill="#e2e8f0" text-anchor="middle">Runway</text>
+
+    <rect x="132" y="0" width="100" height="36" rx="18" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="182" y="23" font-family="system-ui, sans-serif" font-size="13" fill="#e2e8f0" text-anchor="middle">Veo</text>
+
+    <rect x="244" y="0" width="100" height="36" rx="18" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="294" y="23" font-family="system-ui, sans-serif" font-size="13" fill="#e2e8f0" text-anchor="middle">Kling</text>
+
+    <rect x="356" y="0" width="100" height="36" rx="18" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="406" y="23" font-family="system-ui, sans-serif" font-size="13" fill="#e2e8f0" text-anchor="middle">Sora</text>
+
+    <rect x="468" y="0" width="100" height="36" rx="18" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="518" y="23" font-family="system-ui, sans-serif" font-size="13" fill="#e2e8f0" text-anchor="middle">Luma</text>
+
+    <rect x="580" y="0" width="100" height="36" rx="18" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="630" y="23" font-family="system-ui, sans-serif" font-size="13" fill="#e2e8f0" text-anchor="middle">Pika</text>
+
+    <rect x="692" y="0" width="110" height="36" rx="18" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="747" y="23" font-family="system-ui, sans-serif" font-size="13" fill="#e2e8f0" text-anchor="middle">Haiper</text>
+
+    <rect x="814" y="0" width="100" height="36" rx="18" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="864" y="23" font-family="system-ui, sans-serif" font-size="13" fill="#e2e8f0" text-anchor="middle">SVD</text>
+  </g>
+
+  <!-- Pipeline arrow -->
+  <g transform="translate(80, 530)">
+    <rect x="0" y="0" width="160" height="40" rx="8" fill="#3b82f6" opacity="0.9"/>
+    <text x="80" y="26" font-family="system-ui, sans-serif" font-size="14" fill="#fff" text-anchor="middle" font-weight="600">Video Input</text>
+
+    <text x="185" y="26" font-family="system-ui, sans-serif" font-size="20" fill="#475569" text-anchor="middle">→</text>
+
+    <rect x="210" y="0" width="160" height="40" rx="8" fill="#6366f1" opacity="0.9"/>
+    <text x="290" y="26" font-family="system-ui, sans-serif" font-size="14" fill="#fff" text-anchor="middle" font-weight="600">AI Analysis</text>
+
+    <text x="395" y="26" font-family="system-ui, sans-serif" font-size="20" fill="#475569" text-anchor="middle">→</text>
+
+    <rect x="420" y="0" width="160" height="40" rx="8" fill="#8b5cf6" opacity="0.9"/>
+    <text x="500" y="26" font-family="system-ui, sans-serif" font-size="14" fill="#fff" text-anchor="middle" font-weight="600">Blueprints</text>
+
+    <text x="605" y="26" font-family="system-ui, sans-serif" font-size="20" fill="#475569" text-anchor="middle">→</text>
+
+    <rect x="630" y="0" width="160" height="40" rx="8" fill="#a855f7" opacity="0.9"/>
+    <text x="710" y="26" font-family="system-ui, sans-serif" font-size="14" fill="#fff" text-anchor="middle" font-weight="600">Prompts</text>
+  </g>
+
+  <!-- Bottom accent bar -->
+  <rect x="0" y="634" width="1280" height="6" fill="url(#accent)"/>
+</svg>
