@@ -137,6 +137,12 @@ If the primary Gemini model fails, the pipeline automatically falls back through
 3. **OpenRouter Kimi K2.6** (text-only, 1 frame — if `OPENROUTER_API_KEY` is set)
 4. **NVIDIA Nemotron Nano VL 8B** (multi-image vision — if `NVIDIA_NIM_API_KEY` is set)
 
+**Fallback Details:**
+- Each fallback model is progressively lighter in terms of parameters and capabilities
+- The pipeline automatically detects when a model has failed and triggers the next fallback
+- External API fallbacks (OpenAI, OpenRouter, NVIDIA) only trigger after all Gemini models have been exhausted
+- Each fallback model has different rate limits and capabilities, which are enforced by the sliding window rate limiter
+
 ---
 
 ## 💡 Use Cases
@@ -215,6 +221,7 @@ python -m src.main <video_path_or_url> [options]
 | `--frames-only` | Send frames as inline images instead of full video upload. Token cost bounded by `--max-frames` | `false` |
 | `--no-file-api` | Alias for `--frames-only` | `false` |
 | `--blur-threshold` | Minimum sharpness score (Laplacian variance). Higher = stricter. 0 = disable. | `100` |
+| `--aggressive-blur-filter` | Also drop blurry-high-motion frames where both adjacent frames are sharp (requires --blur-threshold). Useful for removing transient pan/zoom artifacts. | `false` |
 | `--wsl` | Force WSL path conversion | Auto |
 | `--win` | Force Windows path mode | Auto |
 
@@ -241,6 +248,9 @@ python -m src.main ./video.mp4 --mock
 
 # Highlights mode (extract best 30 seconds)
 python -m src.main ./video.mp4 --sample-mode highlights --max-duration 30
+
+# Aggressive blur filtering (remove transient pan/zoom artifacts)
+python -m src.main ./video.mp4 --aggressive-blur-filter --blur-threshold 100
 
 # Custom output directory
 python -m src.main ./video.mp4 --output-dir my_results --format json
