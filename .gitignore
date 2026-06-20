@@ -47,8 +47,13 @@ credentials/
 # Pitch / MVP docs (not part of the product)
 phase1/
 
+# Memory/agent directories
+.remember/
+.openclaude/
+
 # Others
 TODO.md
+IMPROVEMENT_PLAN.md
 prompt.txt
 PROJECT_INFO.txt
 prompt.md

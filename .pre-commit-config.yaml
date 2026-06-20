@@ -10,6 +10,11 @@ repos:
         args: ['--maxkb=50000']
       - id: check-merge-conflict
 
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.2
+    hooks:
+      - id: gitleaks
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.4.0
     hooks:
