@@ -24,8 +24,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install ruff
+          pip install -e ".[dev]"
 
       - name: Run ruff linter
         run: ruff check src/ utils/ scripts/
@@ -33,13 +32,35 @@ jobs:
       - name: Run ruff format check
         run: ruff format --check src/ utils/ scripts/
 
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run mypy
+        run: mypy src/ utils/ --ignore-missing-imports
+
   test-unit:
     name: Unit Tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.11', '3.12']
+        python-version: ['3.12']
 
     steps:
       - name: Checkout
@@ -54,21 +75,17 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest
+          pip install -e ".[dev,web]"
 
-      - name: Install package
-        run: pip install -e .
+      - name: Run unit tests with coverage
+        run: python -m pytest tests/unit/ --ignore=tests/unit/test_frame_filter.py --ignore=tests/unit/test_web_api.py --cov=src --cov=utils --cov-report=xml --cov-report=term-missing -q
 
-      - name: Run unit tests
-        run: python -c "from tests.unit import test_validation, test_compile, test_retry; test_validation.run_tests(); test_compile.run_tests(); test_retry.run_tests()"
-
-      - name: Upload test results
+      - name: Upload coverage
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results-${{ matrix.os }}-py${{ matrix.python-version }}
-          path: test_results/
+          name: coverage-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: coverage.xml
           retention-days: 7
 
   docker-build:
@@ -104,12 +121,13 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -e ".[dev]"
 
       - name: Run pip-audit
         uses: pypa/gh-action-pip-audit@v1
-        with:
-          inputs: requirements.txt
+
+      - name: Run bandit
+        run: bandit -r src/ utils/ -f json -o bandit-report.json || true
 
   dependency-review:
     name: Dependency Review

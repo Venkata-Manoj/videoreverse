@@ -1,0 +1,51 @@
+# Version control
+.git
+.gitignore
+.github
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.eggs
+dist
+build
+*.egg
+.venv
+
+# IDE
+.vscode
+.idea
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Tests
+tests/
+scripts/
+benchmark/
+
+# Output
+output_blueprints/
+test_results/
+.cache/
+
+# Secrets
+.env
+.env.*
+
+# Memory/agent directories
+.remember/
+.openclaude/
+
+# Misc
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.log
+TODO.md
+IMPROVEMENT_PLAN.md

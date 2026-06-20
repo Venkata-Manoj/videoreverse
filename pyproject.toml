@@ -1,6 +1,6 @@
 [project]
 name = "vidrev"
-version = "2.1.0"
+dynamic = ["version"]
 description = "Universal Video-to-Prompt Pipeline — deconstruct any video into production-ready prompts for 8+ AI video models"
 readme = "README.md"
 license = {text = "MIT"}
@@ -58,6 +58,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["src*", "utils*", "tests*", "scripts*", "web*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "src.__version__"}
 
 [tool.ruff]
 target-version = "py311"

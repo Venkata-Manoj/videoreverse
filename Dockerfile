@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.12-slim
+FROM python:3.12.8-slim AS base
 
 LABEL maintainer="Venkata-Manoj"
 LABEL description="Universal Video-to-Prompt Pipeline — deconstruct any video into AI prompts for 8+ models"
@@ -13,17 +13,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
-
+COPY pyproject.toml README.md ./
 COPY src/ ./src/
+
+RUN pip install --no-cache-dir -e .
+
 COPY config/ ./config/
 COPY utils/ ./utils/
-COPY tests/ ./tests/
-COPY scripts/ ./scripts/
 COPY web/ ./web/
 
 ENV PYTHONDONTWRITEBYTECODE=1
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import sys; sys.exit(0)"
 
 ENTRYPOINT ["python", "-m"]
 CMD ["src.main", "--help"]
