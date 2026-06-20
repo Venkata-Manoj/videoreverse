@@ -363,6 +363,23 @@ Types: feat, fix, docs, refactor, test, chore
 
 ---
 
+## 🔧 Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| `Gemini API key missing` | Add `GEMINI_API_KEY=your_key` to `.env` file |
+| `FFmpeg not found` | Install ffmpeg: `sudo apt install ffmpeg` (Linux), `brew install ffmpeg` (macOS) |
+| `No video path provided` | Specify a video: `python -m src.main ./video.mp4` |
+| `Rate limited (429/503)` | Pipeline auto-retries and falls back; reduce with `--rate-limit-rpm 3` |
+| `Blueprint has 0 shots` | Video may be too short; try `--mock` to test without API |
+| `Web UI won't start` | Check port 7860: `lsof -i :7860` |
+| `yt-dlp not found` | Install: `pip install yt-dlp` |
+| `Import errors` | Install deps: `pip install -e ".[dev,web]"` |
+
+For more help, see [docs/faq.md](docs/faq.md) or [GitHub Issues](https://github.com/Venkata-Manoj/videoreverse/issues).
+
+---
+
 ## ⭐ Support the Project
 
 If VideoReverse saves you time or helps you create better prompts:

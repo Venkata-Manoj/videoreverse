@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Git LFS** — Test videos tracked via Git LFS (`.gitattributes` for `*.mp4`, `*.mov`, `*.avi`, `*.mkv`)
+- **Gitleaks** — Secret detection wired into pre-commit hooks
+- **mypy strict mode** — `disallow_untyped_defs=true`, `disallow_incomplete_defs=true`, `python_version=3.12`
+- **pytest-cov** — Coverage tracking with XML reports
+- **Docstrings** — Added to 4 public entry points (`ingest_video`, `build_blueprint`, `compile_prompts`, `format_text`)
+- **py.typed** — PEP 561 compliance marker
+- **Dynamic versioning** — `__version__` in `src/__init__.py`, single source of truth
+- **60 new tests** — Export, rate_limiter, integration mock, fallback chain (103 total)
+- **CI improvements** — mypy job, pytest-cov with coverage upload, bandit security scanning
+- **Docker improvements** — Pinned base image (`python:3.12.8-slim`), health check, `.dockerignore`
+- **Documentation** — `docs/getting-started.md`, `docs/contributing.md`, `docs/faq.md`, `docs/blueprint-schema.md`
+
+### Changed
+
+- Removed `requirements.txt` — `pyproject.toml` is single source of truth
+- Removed `MANIFEST.in` — `pyproject.toml` handles packaging
+- CI updated from `requirements.txt` to `pyproject.toml` for dependency installation
+
+### Fixed
+
+- Import ordering across `src/` and `utils/` (ruff I001)
+- Deprecated `typing.List` usage in `schemas/blueprint.py`
+- Exception chaining in `pipeline.py` and `downloader.py` (B904)
+- Unused variables in `pipeline.py` (F841)
+- Loop variable binding in lambda (B023)
+
 ## [2.3.0] - 2026-05-29
 
 ### Added
