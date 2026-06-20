@@ -4,14 +4,11 @@ import json
 import os
 import shutil
 import subprocess
-import time
-from datetime import UTC, datetime
-from collections.abc import Callable
-from typing import Any
-
-ProgressCallback = Callable[[str, dict[str, Any]], None]
-
 import tempfile
+import time
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 
 from src.compile import compile_prompts, get_template_version
 from src.export import format_text
@@ -26,6 +23,8 @@ from utils.sampler import cleanup_sample, sample_video
 from utils.validation import sanitize_blueprint, validate_blueprint
 from utils.video_type import detect_video_type, get_video_type_label
 
+ProgressCallback = Callable[[str, dict[str, Any]], None]
+
 
 def _compress_video(video_path: str, options: dict[str, Any]) -> dict[str, Any] | None:
     if options.get("no_compress"):
@@ -39,7 +38,9 @@ def _compress_video(video_path: str, options: dict[str, Any]) -> dict[str, Any] 
 
         probe = subprocess.run(
             ["ffprobe", "-v", "error", "-show_streams", "-of", "json", video_path],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         streams = json.loads(probe.stdout).get("streams", [])
         vid_stream = next((s for s in streams if s.get("codec_type") == "video"), {})
@@ -59,18 +60,35 @@ def _compress_video(video_path: str, options: dict[str, Any]) -> dict[str, Any] 
         size_before = os.path.getsize(video_path)
         subprocess.run(
             [
-                "ffmpeg", "-i", video_path,
-                "-vf", f"scale={target_width}:{new_h}",
-                "-c:v", "libx264", "-preset", "fast", "-crf", "28",
-                "-c:a", "aac", "-b:a", "64k",
-                "-y", compressed_path,
+                "ffmpeg",
+                "-i",
+                video_path,
+                "-vf",
+                f"scale={target_width}:{new_h}",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "fast",
+                "-crf",
+                "28",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "64k",
+                "-y",
+                compressed_path,
             ],
-            capture_output=True, text=True, check=True, timeout=300,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=300,
         )
 
         size_after = os.path.getsize(compressed_path)
         ratio = (1 - size_after / size_before) * 100 if size_before > 0 else 0
-        print(f"   → Compressed: {target_width}px, {size_after / 1024 / 1024:.1f} MB ({ratio:.0f}% smaller)", flush=True)
+        print(
+            f"   → Compressed: {target_width}px, {size_after / 1024 / 1024:.1f} MB ({ratio:.0f}% smaller)", flush=True
+        )
         return {"path": compressed_path, "temp_dir": temp_dir}
     except Exception as err:
         warn("compress", f"Video compression failed, using original: {err}")
@@ -81,7 +99,9 @@ def _compress_video(video_path: str, options: dict[str, Any]) -> dict[str, Any] 
 
 def _cleanup_temp_dir(results: dict[str, Any]) -> None:
     for key in ("ingest", "compress"):
-        temp_dir = results.get("steps", {}).get(key, {}).get("temp_dir") or results.get("steps", {}).get(key, {}).get("output_dir")
+        temp_dir = results.get("steps", {}).get(key, {}).get("temp_dir") or results.get("steps", {}).get(key, {}).get(
+            "output_dir"
+        )
         if temp_dir and os.path.isdir(temp_dir):
             try:
                 shutil.rmtree(temp_dir)
@@ -214,7 +234,11 @@ async def run_pipeline(
                 lambda: ingest_video(sampled_path, options=options, on_progress=None),
                 {"maxRetries": options.get("max_retries", RETRY_CONFIG["maxRetries"])},
                 on_retry=lambda a, d, m: _on_retry(
-                    "ingest", on_progress, a, d, m,
+                    "ingest",
+                    on_progress,
+                    a,
+                    d,
+                    m,
                     options.get("max_retries", RETRY_CONFIG["maxRetries"]),
                 ),
             )
@@ -271,6 +295,7 @@ async def run_pipeline(
             if options.get("mock"):
                 print("   → Mock mode enabled, skipping API calls", flush=True)
                 from src.synthesize_mock import build_blueprint_mock
+
                 blueprint = build_blueprint_mock(_upload_path, results["steps"]["ingest"], options)
                 synthesis_backend = "mock"
             else:
@@ -279,17 +304,26 @@ async def run_pipeline(
                         lambda: build_blueprint(_upload_path, results["steps"]["ingest"], options),
                         {"maxRetries": options.get("max_retries", RETRY_CONFIG["maxRetries"])},
                         on_retry=lambda a, d, m: _on_retry(
-                            "synthesize", on_progress, a, d, m,
+                            "synthesize",
+                            on_progress,
+                            a,
+                            d,
+                            m,
                             options.get("max_retries", RETRY_CONFIG["maxRetries"]),
                         ),
                     )
                 except Exception as gemini_err:
-                    err_str = str(gemini_err)
                     warn("synthesize", f"Gemini failed ({gemini_err})")
                     blueprint = None
 
                     gemini_fallback_chain = [
-                        m for m in ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3-flash"]
+                        m
+                        for m in [
+                            "gemini-2.5-flash",
+                            "gemini-2.5-flash-lite",
+                            "gemini-3.1-flash-lite",
+                            "gemini-3-flash",
+                        ]
                         if m != options.get("gemini_model", "")
                     ]
                     for fb_model in gemini_fallback_chain:
@@ -300,10 +334,14 @@ async def run_pipeline(
                         try:
                             fb_options = {**options, "gemini_model": fb_model}
                             blueprint = await with_retry(
-                                lambda: build_blueprint(_upload_path, results["steps"]["ingest"], fb_options),
+                                lambda opts=fb_options: build_blueprint(_upload_path, results["steps"]["ingest"], opts),
                                 {"maxRetries": options.get("max_retries", RETRY_CONFIG["maxRetries"])},
                                 on_retry=lambda a, d, m: _on_retry(
-                                    "synthesize_gemini_fallback", on_progress, a, d, m,
+                                    "synthesize_gemini_fallback",
+                                    on_progress,
+                                    a,
+                                    d,
+                                    m,
                                     options.get("max_retries", RETRY_CONFIG["maxRetries"]),
                                 ),
                             )
@@ -317,16 +355,21 @@ async def run_pipeline(
                     if not blueprint:
                         openai_key = os.environ.get("OPENAI_API_KEY")
                         if openai_key:
-                            warn("synthesize", f"Gemini all failed, falling back to OpenAI")
+                            warn("synthesize", "Gemini all failed, falling back to OpenAI")
                             print("   → Attempting OpenAI vision fallback...", flush=True)
                             synthesis_backend = "openai"
                             from src.synthesize_openai import build_blueprint_openai
+
                             try:
                                 blueprint = await with_retry(
                                     lambda: build_blueprint_openai(_upload_path, results["steps"]["ingest"], options),
                                     {"maxRetries": options.get("max_retries", RETRY_CONFIG["maxRetries"])},
                                     on_retry=lambda a, d, m: _on_retry(
-                                        "synthesize_openai", on_progress, a, d, m,
+                                        "synthesize_openai",
+                                        on_progress,
+                                        a,
+                                        d,
+                                        m,
                                         options.get("max_retries", RETRY_CONFIG["maxRetries"]),
                                     ),
                                 )
@@ -335,15 +378,22 @@ async def run_pipeline(
 
                     if not blueprint:
                         from src.synthesize_free_api import build_blueprint_openrouter
+
                         openrouter_key = os.environ.get("OPENROUTER_API_KEY")
                         if openrouter_key:
                             synthesis_backend = "openrouter"
                             try:
                                 blueprint = await with_retry(
-                                    lambda: build_blueprint_openrouter(_upload_path, results["steps"]["ingest"], options),
+                                    lambda: build_blueprint_openrouter(
+                                        _upload_path, results["steps"]["ingest"], options
+                                    ),
                                     {"maxRetries": options.get("max_retries", RETRY_CONFIG["maxRetries"])},
                                     on_retry=lambda a, d, m: _on_retry(
-                                        "synthesize_openrouter", on_progress, a, d, m,
+                                        "synthesize_openrouter",
+                                        on_progress,
+                                        a,
+                                        d,
+                                        m,
                                         options.get("max_retries", RETRY_CONFIG["maxRetries"]),
                                     ),
                                 )
@@ -352,6 +402,7 @@ async def run_pipeline(
 
                     if not blueprint:
                         from src.synthesize_free_api import build_blueprint_nvidia
+
                         nvidia_key = os.environ.get("NVIDIA_NIM_API_KEY")
                         if nvidia_key:
                             synthesis_backend = "nvidia"
@@ -360,7 +411,11 @@ async def run_pipeline(
                                     lambda: build_blueprint_nvidia(_upload_path, results["steps"]["ingest"], options),
                                     {"maxRetries": options.get("max_retries", RETRY_CONFIG["maxRetries"])},
                                     on_retry=lambda a, d, m: _on_retry(
-                                        "synthesize_nvidia", on_progress, a, d, m,
+                                        "synthesize_nvidia",
+                                        on_progress,
+                                        a,
+                                        d,
+                                        m,
                                         options.get("max_retries", RETRY_CONFIG["maxRetries"]),
                                     ),
                                 )
@@ -371,7 +426,7 @@ async def run_pipeline(
                         raise VRError(
                             VRErrorCode.GEMINI_SYNTHESIS_FAILED,
                             detail="All synthesis backends failed (Gemini, OpenAI, OpenRouter, NVIDIA)",
-                        )
+                        ) from None
 
             try:
                 validate_blueprint(blueprint)
@@ -452,7 +507,10 @@ async def run_pipeline(
 
         if options.get("dry_run"):
             _emit_progress(
-                on_progress, "step", step="export", status="done",
+                on_progress,
+                "step",
+                step="export",
+                status="done",
                 message="Dry run -- results not saved to disk",
             )
             _emit_progress(
@@ -475,7 +533,10 @@ async def run_pipeline(
             return results["output"]
 
         _emit_progress(
-            on_progress, "step", step="export", status="running",
+            on_progress,
+            "step",
+            step="export",
+            status="running",
             message="Saving JSON and text outputs",
         )
         output_dir = os.path.abspath(options.get("output_dir", "output_blueprints"))

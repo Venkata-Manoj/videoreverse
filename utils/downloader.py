@@ -7,7 +7,6 @@ from pathlib import Path
 
 from utils.error_codes import VRError, VRErrorCode
 
-
 URL_REGEX = re.compile(r"^https?://[^\s/$.?#].[^\s]*$", re.IGNORECASE)
 
 
@@ -28,7 +27,7 @@ def download_video(url: str, dest_dir: str, max_mb: int = 500) -> str:
         raise VRError(
             VRErrorCode.URL_DOWNLOAD_FAILED,
             detail="yt-dlp is not installed. Run: pip install yt-dlp",
-        )
+        ) from None
 
     dest = Path(dest_dir)
     dest.mkdir(parents=True, exist_ok=True)
@@ -50,7 +49,7 @@ def download_video(url: str, dest_dir: str, max_mb: int = 500) -> str:
         raise VRError(
             VRErrorCode.URL_DOWNLOAD_FAILED,
             detail=f"Download failed: {e}",
-        )
+        ) from e
 
     actual = str(dest / Path(filename).name)
     actual = actual.rsplit(".", 1)[0] + "." + (info.get("ext") or "mp4")

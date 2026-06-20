@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import os
 import time
@@ -21,9 +22,7 @@ _upload_cache: dict[str, dict[str, Any]] = {}
 def _get_client():
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
-        raise ValueError(
-            "GEMINI_API_KEY environment variable not set"
-        )
+        raise ValueError("GEMINI_API_KEY environment variable not set")
     return genai.Client(api_key=key)
 
 
@@ -166,6 +165,7 @@ def _extract_motion_transitions(timeline_frames: list[dict[str, Any]] | None) ->
 
 def _build_frame_parts(timeline_frames: list[dict[str, Any]]) -> list[Any]:
     from google.genai import types
+
     parts = []
     for frame in timeline_frames:
         path = frame.get("path")
@@ -173,12 +173,14 @@ def _build_frame_parts(timeline_frames: list[dict[str, Any]]) -> list[Any]:
             continue
         with open(path, "rb") as f:
             data = f.read()
-        parts.append(types.Part(
-            inline_data=types.Blob(
-                mime_type="image/jpeg",
-                data=data,
+        parts.append(
+            types.Part(
+                inline_data=types.Blob(
+                    mime_type="image/jpeg",
+                    data=data,
+                )
             )
-        ))
+        )
     return parts
 
 
@@ -187,6 +189,17 @@ async def build_blueprint(
     step1_data: dict[str, Any] | None,
     options: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
+    """Synthesize a universal blueprint from video frames using Gemini AI.
+
+    Args:
+        video_path: Path to the video file (or compressed version).
+        step1_data: Ingestion output containing frame paths and metadata.
+        options: Pipeline options (gemini_model, max_retries, frames_only, etc.).
+
+    Returns:
+        UniversalBlueprint dict with global_aesthetic and chronological_shots,
+        or None if synthesis fails.
+    """
     if options is None:
         options = {}
 
@@ -211,7 +224,7 @@ async def build_blueprint(
                 uploaded_name = cached["name"]
                 status = await client.aio.files.get(name=cached["name"])
                 if status.state == "ACTIVE":
-                    print(f"   → File ready (cached)", flush=True)
+                    print("   → File ready (cached)", flush=True)
                 else:
                     print("   → Cached file not ready, waiting...", flush=True)
                     for i in range(60):
@@ -370,7 +383,9 @@ Use these as additional hints for shot boundary detection."""
         if options.get("frames_only"):
             frame_parts = _build_frame_parts(timeline_frames)
             contents_parts = [types.Part(text=user_prompt)] + frame_parts
-            print(f"   → Send {len(frame_parts)} frames as inline images ({len(timeline_frames)} in timeline)", flush=True)
+            print(
+                f"   → Send {len(frame_parts)} frames as inline images ({len(timeline_frames)} in timeline)", flush=True
+            )
         else:
             active_file = status
             file_uri = active_file.uri
@@ -479,7 +494,5 @@ Use these as additional hints for shot boundary detection."""
 
     finally:
         if uploaded_name and _success:
-            try:
+            with contextlib.suppress(Exception):
                 await client.aio.files.delete(name=uploaded_name)
-            except Exception:
-                pass

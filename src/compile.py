@@ -115,6 +115,16 @@ def compile_prompts(
     video_metadata: dict[str, Any] | None,
     filter_models: list[str] | None = None,
 ) -> dict[str, Any]:
+    """Compile universal blueprint into model-specific prompts.
+
+    Args:
+        blueprint: Universal blueprint with global_aesthetic and chronological_shots.
+        video_metadata: Video metadata (resolution, duration, etc.) for aspect ratio.
+        filter_models: Optional list of model names to include (None = all).
+
+    Returns:
+        Dictionary mapping model names to their generated prompts.
+    """
     print("⚙️  VideoReverse: Step 6 — Prompt Compilation", flush=True)
 
     templates = _load_templates()

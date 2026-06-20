@@ -21,18 +21,20 @@ def build_blueprint_mock(
         for i in range(num_shots):
             start = round(i * seg, 1)
             end = round((i + 1) * seg, 1) if i < num_shots - 1 else round(duration, 1)
-            shots.append({
-                "shot_index": i,
-                "start_time_seconds": start,
-                "end_time_seconds": end,
-                "duration_seconds": round(end - start, 1),
-                "camera_direction": "static",
-                "framing_type": "medium",
-                "action_and_motion": "mock scene",
-                "environment_context": "indoor",
-                "negative_elements": [],
-                "frame_references": [],
-            })
+            shots.append(
+                {
+                    "shot_index": i,
+                    "start_time_seconds": start,
+                    "end_time_seconds": end,
+                    "duration_seconds": round(end - start, 1),
+                    "camera_direction": "static",
+                    "framing_type": "medium",
+                    "action_and_motion": "mock scene",
+                    "environment_context": "indoor",
+                    "negative_elements": [],
+                    "frame_references": [],
+                }
+            )
 
     blueprint = {
         "global_aesthetic": {

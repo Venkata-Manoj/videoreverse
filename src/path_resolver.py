@@ -38,6 +38,7 @@ def normalize_for_env(target: str | Any, wsl_mode: str | None = None) -> str | A
     env = wsl_mode
     if env is None:
         from utils.cli import detect_environment
+
         env = detect_environment()
 
     if env == "win":
@@ -51,6 +52,6 @@ def normalize_for_env(target: str | Any, wsl_mode: str | None = None) -> str | A
 
     m = re.match(r"^/mnt/([a-z])/", target, re.IGNORECASE)
     if m:
-        return f"/mnt/{m.group(1).lower()}/{target[len(m.group(0)):]}"
+        return f"/mnt/{m.group(1).lower()}/{target[len(m.group(0)) :]}"
 
     return os.path.abspath(target)

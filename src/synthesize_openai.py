@@ -46,10 +46,12 @@ def _build_frame_content(timeline_frames: list[dict[str, Any]]) -> list[dict[str
     parts: list[dict[str, Any]] = []
     for frame in selected:
         b64 = _encode_frame(frame["path"])
-        parts.append({
-            "type": "image_url",
-            "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "low"},
-        })
+        parts.append(
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "low"},
+            }
+        )
     return parts
 
 
@@ -154,7 +156,11 @@ Use these as hints for shot segmentation."""
         blueprint["_metadata"] = {
             "total_frames_analyzed": len(timeline_frames),
             "shots_with_frame_traceability": len(
-                [s for s in blueprint["chronological_shots"] if s.get("frame_references") and len(s["frame_references"]) > 0]
+                [
+                    s
+                    for s in blueprint["chronological_shots"]
+                    if s.get("frame_references") and len(s["frame_references"]) > 0
+                ]
             ),
             "analysis_timestamp": datetime.now(UTC).isoformat(),
             "synthesis_backend": "openai",
@@ -163,7 +169,9 @@ Use these as hints for shot segmentation."""
 
         print("✅ Blueprint generated via OpenAI:", flush=True)
         print(f"   → {len(blueprint['chronological_shots'])} shots identified", flush=True)
-        print(f"   → {blueprint['_metadata']['shots_with_frame_traceability']} shots with frame traceability", flush=True)
+        print(
+            f"   → {blueprint['_metadata']['shots_with_frame_traceability']} shots with frame traceability", flush=True
+        )
 
         return blueprint
 

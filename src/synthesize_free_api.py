@@ -45,10 +45,12 @@ def _build_frame_content(timeline_frames: list[dict[str, Any]], max_frames: int 
     parts: list[dict[str, Any]] = []
     for frame in selected:
         b64 = _encode_frame(frame["path"])
-        parts.append({
-            "type": "image_url",
-            "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
-        })
+        parts.append(
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
+            }
+        )
     return parts
 
 
@@ -101,8 +103,7 @@ Include a global_aesthetic with art_style, color_grading, and lighting_setup.
 You MUST respond with valid JSON matching this exact structure."""
     if scene_changes:
         hints = "\n".join(
-            f"- {sc.get('timestamp_seconds', 0):.2f}s: {sc.get('type', 'unknown')}"
-            for sc in scene_changes
+            f"- {sc.get('timestamp_seconds', 0):.2f}s: {sc.get('type', 'unknown')}" for sc in scene_changes
         )
         prompt += f"\n\nDetected cut points:\n{hints}\nUse as hints for shot segmentation."
 
@@ -164,7 +165,11 @@ async def _call_free_api(
         blueprint["_metadata"] = {
             "total_frames_analyzed": len(timeline_frames),
             "shots_with_frame_traceability": len(
-                [s for s in blueprint["chronological_shots"] if s.get("frame_references") and len(s["frame_references"]) > 0]
+                [
+                    s
+                    for s in blueprint["chronological_shots"]
+                    if s.get("frame_references") and len(s["frame_references"]) > 0
+                ]
             ),
             "analysis_timestamp": datetime.now(UTC).isoformat(),
             "synthesis_backend": backend_name,
@@ -184,7 +189,8 @@ async def build_blueprint_openrouter(
     options: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     return await _call_free_api(
-        step1_data, options or {},
+        step1_data,
+        options or {},
         backend_name="OpenRouter",
         base_url="https://openrouter.ai/api/v1",
         api_key_env="OPENROUTER_API_KEY",
@@ -199,7 +205,8 @@ async def build_blueprint_nvidia(
     options: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     return await _call_free_api(
-        step1_data, options or {},
+        step1_data,
+        options or {},
         backend_name="NVIDIA NIM",
         base_url="https://integrate.api.nvidia.com/v1",
         api_key_env="NVIDIA_NIM_API_KEY",

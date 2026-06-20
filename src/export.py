@@ -4,6 +4,16 @@ from typing import Any
 
 
 def format_text(output: dict[str, Any]) -> str:
+    """Format pipeline output into a human-readable text document.
+
+    Args:
+        output: Complete pipeline output containing video_metadata, blueprint,
+                and compiled prompts.
+
+    Returns:
+        Formatted string with metadata, aesthetic overview, shot breakdown,
+        and all model-specific prompts.
+    """
     meta = output.get("video_metadata", {})
     blueprint = output.get("blueprint", {})
     prompts = output.get("prompts", {})

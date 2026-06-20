@@ -71,11 +71,7 @@ def api_error_from_exception(exc: Exception) -> Exception:
         return exc
 
     message = str(exc)
-    status_code = (
-        getattr(exc, "status_code", None)
-        or getattr(exc, "code", None)
-        or extract_status_code(message)
-    )
+    status_code = getattr(exc, "status_code", None) or getattr(exc, "code", None) or extract_status_code(message)
     if isinstance(status_code, str) and status_code.isdigit():
         status_code = int(status_code)
 
@@ -114,9 +110,7 @@ async def with_retry(
             last_error = api_error_from_exception(error)
             is_retriable = isinstance(last_error, RetriableError) and last_error.is_retriable
             if not is_retriable:
-                is_retriable = _is_retriable_error(
-                    str(last_error), getattr(last_error, "status_code", None)
-                )
+                is_retriable = _is_retriable_error(str(last_error), getattr(last_error, "status_code", None))
 
             if not is_retriable or attempt > config["maxRetries"]:
                 raise last_error from error

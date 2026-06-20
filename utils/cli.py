@@ -24,7 +24,15 @@ SUPPORTED_MODELS = [
 SUPPORTED_FORMATS = ["json", "txt", "both", "none"]
 SUPPORTED_SAMPLE_MODES = ["full", "first-n", "highlights"]
 SUPPORTED_LOG_LEVELS = ["debug", "info", "warn", "error", "quiet"]
-SUPPORTED_GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-3-flash", "gemini-flash-latest", "gemini-flash-lite-latest"]
+SUPPORTED_GEMINI_MODELS = [
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-3.5-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-3-flash",
+    "gemini-flash-latest",
+    "gemini-flash-lite-latest",
+]
 
 
 def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:

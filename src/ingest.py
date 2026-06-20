@@ -106,7 +106,9 @@ def _detect_scene_changes(
         curr = frames[i]
 
         motion_changed = prev.get("motion_level") != curr.get("motion_level")
-        bytes_ratio = abs(curr.get("bytes", 0) - prev.get("bytes", 0)) / prev.get("bytes", 1) if prev.get("bytes", 0) > 0 else 0
+        bytes_ratio = (
+            abs(curr.get("bytes", 0) - prev.get("bytes", 0)) / prev.get("bytes", 1) if prev.get("bytes", 0) > 0 else 0
+        )
         is_significant_motion_change = (prev.get("motion_level") == "high" and curr.get("motion_level") == "low") or (
             prev.get("motion_level") == "low" and curr.get("motion_level") == "high"
         )
@@ -236,6 +238,17 @@ def ingest_video(
     options: dict[str, Any] | None = None,
     on_progress: IngestProgressCallback | None = None,
 ) -> dict[str, Any]:
+    """Ingest a video file and extract metadata, frames, audio, and transcription.
+
+    Args:
+        video_target: Path or URL to the video file.
+        options: Pipeline options (sample_mode, max_frames, no_transcribe, etc.).
+        on_progress: Optional callback for progress updates.
+
+    Returns:
+        Dictionary containing video metadata, frame paths, audio analysis,
+        and transcription results.
+    """
     if options is None:
         options = {}
 
@@ -269,8 +282,12 @@ def ingest_video(
         probe_result = subprocess.run(probe_cmd, capture_output=True, text=True, check=True, timeout=60)
         probe_data = json.loads(probe_result.stdout)
 
-        video_stream = next((stream for stream in probe_data.get("streams", []) if stream.get("codec_type") == "video"), {})
-        audio_stream = next((stream for stream in probe_data.get("streams", []) if stream.get("codec_type") == "audio"), {})
+        video_stream = next(
+            (stream for stream in probe_data.get("streams", []) if stream.get("codec_type") == "video"), {}
+        )
+        audio_stream = next(
+            (stream for stream in probe_data.get("streams", []) if stream.get("codec_type") == "audio"), {}
+        )
         fmt = probe_data.get("format", {})
 
         width = int(video_stream.get("width", 0))

@@ -107,7 +107,10 @@ async def wait_for_capacity(
         rpd_count = len(_rpd_windows[model])
 
         estimated_tokens = _estimate_tokens(prompt, timeline_frames or [], video_duration)
-        print(f"   → Rate state: {rpm_count}/{rpm} RPM | {tpm_count}/{tpm} TPM | {rpd_count}/{rpd} RPD | ~{estimated_tokens} est. tokens", flush=True)
+        print(
+            f"   → Rate state: {rpm_count}/{rpm} RPM | {tpm_count}/{tpm} TPM | {rpd_count}/{rpd} RPD | ~{estimated_tokens} est. tokens",
+            flush=True,
+        )
 
         delays: list[float] = []
 
@@ -129,7 +132,10 @@ async def wait_for_capacity(
 
         if delays:
             wait_time = max(delays) + 1
-            print(f"   → Rate limited: waiting {wait_time:.0f}s (RPM:{rpm_count}/{rpm} TPM:{tpm_count}/{tpm} RPD:{rpd_count}/{rpd})", flush=True)
+            print(
+                f"   → Rate limited: waiting {wait_time:.0f}s (RPM:{rpm_count}/{rpm} TPM:{tpm_count}/{tpm} RPD:{rpd_count}/{rpd})",
+                flush=True,
+            )
             await asyncio.sleep(wait_time)
 
         _clean_windows(_rpm_windows[model], 60)
