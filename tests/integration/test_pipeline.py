@@ -61,7 +61,7 @@ def run_tests():
 
         extraction = result.get('extraction', {})
         frames_filtered = extraction.get('frames_filtered')
-        assert frames_filtered is not None, f'frames_filtered is None'
+        assert frames_filtered is not None, 'frames_filtered is None'
         assert isinstance(frames_filtered, int), f'frames_filtered should be int, got {type(frames_filtered)}'
         assert frames_filtered >= 0, f'frames_filtered should be >= 0, got {frames_filtered}'
         frames_emitted = extraction.get('frames_emitted', 0)

@@ -1,15 +1,15 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import Any
 
-import sys
 PROJECT_ROOT = str(Path(__file__).resolve().parent.parent.parent)
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from src.synthesize import _detect_motion_transitions, _extract_motion_transitions
-from tests.unit.test_framework import describe, it, expect
+from tests.unit.test_framework import describe, expect, it
 
 
 def _frame(

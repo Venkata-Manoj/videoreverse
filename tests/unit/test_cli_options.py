@@ -13,8 +13,9 @@ def test_parse_cli_args_defaults_no_transcribe_false() -> None:
 
 
 def test_print_help_uses_src_main() -> None:
-    from utils.cli import print_help
     import io
+
+    from utils.cli import print_help
 
     buf = io.StringIO()
     import sys
@@ -42,8 +43,9 @@ def test_parse_cli_args_defaults_frames_only_false() -> None:
     assert options["frames_only"] is False
 
 def test_print_help_has_frames_only() -> None:
-    from utils.cli import print_help
     import io
+
+    from utils.cli import print_help
 
     buf = io.StringIO()
     import sys
@@ -57,8 +59,9 @@ def test_print_help_has_frames_only() -> None:
     assert "--frames-only" in output
 
 def test_print_help_has_no_file_api_alias() -> None:
-    from utils.cli import print_help
     import io
+
+    from utils.cli import print_help
 
     buf = io.StringIO()
     import sys
@@ -72,8 +75,9 @@ def test_print_help_has_no_file_api_alias() -> None:
     assert "--no-file-api" in output
 
 def test_print_help_has_max_retries_default_3() -> None:
-    from utils.cli import print_help
     import io
+
+    from utils.cli import print_help
 
     buf = io.StringIO()
     import sys

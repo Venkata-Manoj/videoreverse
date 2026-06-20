@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from src.compile import compile_prompts
 from src.path_resolver import get_config_path
-from tests.unit.test_framework import describe, it, expect
+from tests.unit.test_framework import describe, expect, it
 
 MOCK_BLUEPRINT = {
     'global_aesthetic': {

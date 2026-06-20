@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-import sys
 PROJECT_ROOT = str(Path(__file__).resolve().parent.parent.parent)
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+from tests.unit.test_framework import describe, expect, it
 from utils.cli import parse_cli_args
-from tests.unit.test_framework import describe, it, expect
 
 
 def run_tests():

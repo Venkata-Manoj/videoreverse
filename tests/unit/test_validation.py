@@ -4,15 +4,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from pydantic import ValidationError
+
 from src.schemas.blueprint import (
-    UniversalBlueprint,
     ChronologicalShot,
-    GlobalAesthetic,
     FrameReference,
+    GlobalAesthetic,
     ShotBoundary,
+    UniversalBlueprint,
 )
-from utils.validation import validate_blueprint, sanitize_blueprint, validate_video_metadata
-from tests.unit.test_framework import describe, it, expect
+from tests.unit.test_framework import describe, expect, it
+from utils.validation import sanitize_blueprint, validate_blueprint, validate_video_metadata
 
 
 def _make_valid_shot(overrides: dict | None = None) -> dict:

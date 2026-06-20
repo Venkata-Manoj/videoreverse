@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import os
+import sys
 import tempfile
 from pathlib import Path
 
-import sys
 PROJECT_ROOT = str(Path(__file__).resolve().parent.parent.parent)
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from src.pipeline import _cleanup_temp_dir
-from tests.unit.test_framework import describe, it, expect
+from tests.unit.test_framework import describe, expect, it
 
 
 def run_tests():
