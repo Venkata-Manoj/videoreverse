@@ -7,7 +7,7 @@ import os
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from google import genai
 
@@ -19,7 +19,7 @@ from utils.retry import api_error_from_exception
 _upload_cache: dict[str, dict[str, Any]] = {}
 
 
-def _get_client():
+def _get_client() -> Any:
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
         raise ValueError("GEMINI_API_KEY environment variable not set")
@@ -490,7 +490,7 @@ Use these as additional hints for shot boundary detection."""
                 print(f"   → Cleanup warning: {e}", flush=True)
         _upload_cache.pop(cache_key, None)
 
-        return blueprint
+        return cast(dict[str, Any], blueprint)
 
     finally:
         if uploaded_name and _success:

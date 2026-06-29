@@ -9,7 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.path_resolver import get_root
-from utils.validation import validate_blueprint, BlueprintValidationError
+from utils.validation import BlueprintValidationError, validate_blueprint
 
 PROJECT_ROOT = get_root()
 
@@ -67,7 +67,7 @@ def _latest_per_video(files: list[str]) -> list[str]:
         ts = match.group(1) if match else ""
         grouped.setdefault(video_name, []).append((ts, f))
     result = []
-    for name, entries in grouped.items():
+    for _name, entries in grouped.items():
         entries.sort(key=lambda x: x[0], reverse=True)
         result.append(entries[0][1])
     return result

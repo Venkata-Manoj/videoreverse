@@ -24,7 +24,7 @@ def score_blur(image_path: str) -> float | None:
         return None
     h, w = img.shape
     laplacian_var = cv2.Laplacian(img, cv2.CV_64F).var()
-    score = laplacian_var / (w * h) * 1_000_000
+    score: float = laplacian_var / (w * h) * 1_000_000
     return score
 
 
@@ -36,7 +36,7 @@ def _is_motion_blur_transient(scored: list[dict[str, Any]], idx: int, threshold:
     prev_score = scored[idx - 1].get("blur_score", 0)
     next_score = scored[idx + 1].get("blur_score", 0)
     curr_score = scored[idx].get("blur_score", 0)
-    return prev_score >= threshold and next_score >= threshold and curr_score < threshold
+    return bool(prev_score >= threshold and next_score >= threshold and curr_score < threshold)
 
 
 def filter_blurry_frames(

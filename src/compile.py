@@ -56,7 +56,7 @@ def _apply_enhancement_rules(prompt: str, model_config: dict[str, Any]) -> str:
     guidelines = rules.get("prompt_guidelines", {})
 
     keywords = rules.get("keyword_injection", {})
-    keyword_phrases = []
+    keyword_phrases: list[str] = []
 
     for _category, words in keywords.items():
         if isinstance(words, list):
@@ -144,7 +144,7 @@ def compile_prompts(
         if filter_models and model_key not in filter_models:
             continue
 
-        model_prompts = []
+        model_prompts: list[dict[str, Any]] = []
 
         for shot in shots:
             duration = min(shot.get("duration_seconds", 5), model_config.get("max_duration", 10))

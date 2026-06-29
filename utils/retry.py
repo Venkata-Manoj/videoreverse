@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import random
 import re
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Any, TypeVar
 
 T = TypeVar("T")
@@ -91,23 +91,23 @@ def calculate_delay(attempt: int, config: dict[str, Any] | None = None) -> int:
 
 
 async def with_retry(
-    fn: Callable[[], T | asyncio.Future[T]],
+    fn: Callable[[], T | Awaitable[T]],
     options: dict[str, Any] | None = None,
     on_retry: Callable[[int, int, str], None] | None = None,
 ) -> T:
     if options is None:
         options = {}
     config = {**RETRY_CONFIG, **options}
-    last_error = None
+    last_error: BaseException | None = None
 
     for attempt in range(1, config["maxRetries"] + 2):
         try:
             result = fn()
             if asyncio.iscoroutine(result):
-                return await result
-            return result
-        except Exception as error:
-            last_error = api_error_from_exception(error)
+                return await result  # type: ignore[no-any-return]
+            return result  # type: ignore[return-value]
+        except BaseException as error:
+            last_error = api_error_from_exception(error) if isinstance(error, Exception) else error
             is_retriable = isinstance(last_error, RetriableError) and last_error.is_retriable
             if not is_retriable:
                 is_retriable = _is_retriable_error(str(last_error), getattr(last_error, "status_code", None))
@@ -122,4 +122,6 @@ async def with_retry(
                 on_retry(attempt, delay, str(last_error))
             await asyncio.sleep(delay / 1000)
 
-    raise last_error
+    if last_error:
+        raise last_error
+    raise RuntimeError("with_retry: unexpected exit (no error, no success)")

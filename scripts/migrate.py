@@ -6,7 +6,6 @@ import sqlite3
 import sys
 from pathlib import Path
 
-
 MIGRATIONS: list[dict] = [
     {
         "version": 1,
@@ -67,7 +66,7 @@ def migrate(db_path: str, target_version: int | None = None) -> None:
             conn.executescript(migration["sql"])
             conn.execute(f"PRAGMA user_version = {migration['version']}")
             conn.commit()
-            print(f"  → Done")
+            print("  → Done")
         print(f"Migrated from v{current} to v{target}")
     except sqlite3.Error as e:
         print(f"Migration failed: {e}", file=sys.stderr)

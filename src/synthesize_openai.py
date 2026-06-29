@@ -4,7 +4,7 @@ import base64
 import json
 import os
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 from openai import AsyncOpenAI
 
@@ -141,7 +141,7 @@ Use these as hints for shot segmentation."""
         response = await client.chat.completions.create(
             model=model,
             messages=messages,
-            response_format={"type": "json_object"},
+            response_format={"type": "json_object"},  # type: ignore[call-overload]
             temperature=0.1,
         )
 
@@ -173,7 +173,7 @@ Use these as hints for shot segmentation."""
             f"   → {blueprint['_metadata']['shots_with_frame_traceability']} shots with frame traceability", flush=True
         )
 
-        return blueprint
+        return cast(dict[str, Any], blueprint)
 
     except Exception as exc:
         raise api_error_from_exception(exc) from exc

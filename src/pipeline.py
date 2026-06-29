@@ -8,7 +8,7 @@ import tempfile
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 from src.compile import compile_prompts, get_template_version
 from src.export import format_text
@@ -43,7 +43,7 @@ def _compress_video(video_path: str, options: dict[str, Any]) -> dict[str, Any] 
             timeout=30,
         )
         streams = json.loads(probe.stdout).get("streams", [])
-        vid_stream = next((s for s in streams if s.get("codec_type") == "video"), {})
+        vid_stream: dict[str, Any] = next((s for s in streams if s.get("codec_type") == "video"), {})
         orig_w = int(vid_stream.get("width", 0)) or 0
         orig_h = int(vid_stream.get("height", 0)) or 0
 
@@ -204,7 +204,7 @@ async def run_pipeline(
     print(f"  Video Type: {get_video_type_label(video_type) or 'auto-detect'}", flush=True)
     print("=" * 60 + "\n", flush=True)
 
-    results = {
+    results: dict[str, Any] = {
         "input": {
             "original": options.get("video_path"),
             "resolved": normalized,
@@ -334,7 +334,7 @@ async def run_pipeline(
                         try:
                             fb_options = {**options, "gemini_model": fb_model}
                             blueprint = await with_retry(
-                                lambda opts=fb_options: build_blueprint(_upload_path, results["steps"]["ingest"], opts),
+                                lambda opts=fb_options: build_blueprint(_upload_path, results["steps"]["ingest"], opts),  # type: ignore[misc]
                                 {"maxRetries": options.get("max_retries", RETRY_CONFIG["maxRetries"])},
                                 on_retry=lambda a, d, m: _on_retry(
                                     "synthesize_gemini_fallback",
@@ -429,6 +429,7 @@ async def run_pipeline(
                         ) from None
 
             try:
+                assert blueprint is not None
                 validate_blueprint(blueprint)
                 debug("validation", "Blueprint validation passed")
             except Exception as validation_err:
@@ -465,8 +466,10 @@ async def run_pipeline(
         print("\n-- Prompt Compilation --\n", flush=True)
 
         try:
+            from typing import cast as _type_cast
+
             prompts = compile_prompts(
-                blueprint, results["steps"]["ingest"].get("video_metadata", {}), options.get("models")
+                _type_cast(dict[str, Any], blueprint), results["steps"]["ingest"].get("video_metadata", {}), options.get("models")
             )
             results["steps"]["compile"] = prompts
             _timing["compile_ms"] = round((time.monotonic() - _t_step) * 1000, 1)
@@ -530,7 +533,7 @@ async def run_pipeline(
                 print(json.dumps(results["output"], indent=2), flush=True)
             cleanup_sample(sample_result)
             _cleanup_temp_dir(results)
-            return results["output"]
+            return cast(dict[str, Any], results["output"])
 
         _emit_progress(
             on_progress,
@@ -592,7 +595,7 @@ async def run_pipeline(
 
         cleanup_sample(sample_result)
         _cleanup_temp_dir(results)
-        return results["output"]
+        return cast(dict[str, Any], results["output"])
 
     except Exception as err:
         _timing["total_ms"] = round((time.monotonic() - _t_start) * 1000, 1)
@@ -606,7 +609,7 @@ async def run_pipeline(
         _emit_progress(
             on_progress,
             "pipeline_error",
-            message=err.to_dict(),
+            message=str(err.to_dict()),
             timing=results.get("timing"),
             errors=results.get("errors"),
         )

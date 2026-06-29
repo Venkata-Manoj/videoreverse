@@ -110,7 +110,7 @@ async def run_tests() -> dict[str, Any]:
 
     _ensure_results_dir()
 
-    results = {
+    results: dict[str, Any] = {
         "timestamp": datetime.now(UTC).isoformat(),
         "total": len(TEST_VIDEOS),
         "passed": 0,
@@ -119,7 +119,8 @@ async def run_tests() -> dict[str, Any]:
     }
 
     for test in TEST_VIDEOS:
-        video_path = os.path.join(PROJECT_ROOT, test["name"])
+        test_name = str(test["name"])
+        video_path = os.path.join(PROJECT_ROOT, test_name)
         exists = os.path.exists(video_path)
 
         print(f"\n┌─ Test: {test['name']}", flush=True)
@@ -147,7 +148,7 @@ async def run_tests() -> dict[str, Any]:
         duration = time.time() * 1000 - start_time
 
         if result["success"]:
-            base_name = test["name"].replace(".mp4", "")
+            base_name = test_name.replace(".mp4", "")
             output_files = [os.path.join(RESULTS_DIR, f) for f in os.listdir(RESULTS_DIR) if f.startswith(base_name)]
 
             json_file = next((f for f in output_files if f.endswith(".json")), None)

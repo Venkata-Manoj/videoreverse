@@ -198,7 +198,7 @@ def _transcribe_via_groq(audio_path: str) -> dict[str, Any] | None:
 
 def _transcribe_local(audio_path: str, model_name: str) -> dict[str, Any]:
     try:
-        import whisper  # type: ignore[import-not-found]
+        import whisper
     except ImportError:
         return {
             "text": "",
@@ -282,10 +282,10 @@ def ingest_video(
         probe_result = subprocess.run(probe_cmd, capture_output=True, text=True, check=True, timeout=60)
         probe_data = json.loads(probe_result.stdout)
 
-        video_stream = next(
+        video_stream: dict[str, Any] = next(
             (stream for stream in probe_data.get("streams", []) if stream.get("codec_type") == "video"), {}
         )
-        audio_stream = next(
+        audio_stream: dict[str, Any] = next(
             (stream for stream in probe_data.get("streams", []) if stream.get("codec_type") == "audio"), {}
         )
         fmt = probe_data.get("format", {})

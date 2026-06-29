@@ -163,7 +163,7 @@ def clear_cache(cache_type: str | None = None) -> None:
 def get_cache_stats() -> dict[str, Any]:
     ensure_cache_dir()
 
-    stats = {
+    stats: dict[str, Any] = {
         "total": 0,
         "total_size_bytes": 0,
         "byType": {},

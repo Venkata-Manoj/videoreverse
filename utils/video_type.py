@@ -62,4 +62,6 @@ def get_video_type_label(video_type: str | None) -> str:
         VIDEO_TYPES["SOCIAL"]: "Social Media (Vertical)",
         VIDEO_TYPES["UNKNOWN"]: "Unknown Video Type",
     }
+    if video_type is None:
+        return "Unknown"
     return labels.get(video_type, "Unknown")

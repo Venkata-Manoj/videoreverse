@@ -16,7 +16,7 @@ def validate_video_metadata(metadata: dict[str, Any] | None) -> bool:
         if metadata.get(field) is None:
             return False
 
-    return metadata["duration_seconds"] > 0 and metadata["width"] > 0 and metadata["height"] > 0
+    return bool(metadata["duration_seconds"] > 0 and metadata["width"] > 0 and metadata["height"] > 0)
 
 
 class BlueprintValidationError(Exception):

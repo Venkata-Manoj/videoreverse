@@ -4,7 +4,7 @@ import base64
 import json
 import os
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 from openai import AsyncOpenAI
 
@@ -177,7 +177,7 @@ async def _call_free_api(
         }
 
         print(f"✅ {backend_name}: {len(blueprint['chronological_shots'])} shots identified", flush=True)
-        return blueprint
+        return cast(dict[str, Any], blueprint)
 
     except Exception as exc:
         raise api_error_from_exception(exc) from exc

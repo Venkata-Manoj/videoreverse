@@ -41,7 +41,7 @@ def parse_cli_args(args: list[str] | None = None) -> dict[str, Any]:
     if args is None:
         args = sys.argv[1:]
 
-    result = {
+    result: dict[str, Any] = {
         "video_path": None,
         "models": None,
         "output_dir": DEFAULT_OUTPUT_DIR,
