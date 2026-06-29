@@ -469,7 +469,9 @@ async def run_pipeline(
             from typing import cast as _type_cast
 
             prompts = compile_prompts(
-                _type_cast(dict[str, Any], blueprint), results["steps"]["ingest"].get("video_metadata", {}), options.get("models")
+                _type_cast(dict[str, Any], blueprint),
+                results["steps"]["ingest"].get("video_metadata", {}),
+                options.get("models"),
             )
             results["steps"]["compile"] = prompts
             _timing["compile_ms"] = round((time.monotonic() - _t_step) * 1000, 1)
