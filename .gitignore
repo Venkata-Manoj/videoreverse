@@ -38,6 +38,7 @@ temp/
 
 # Coverage
 coverage/
+coverage-*-py*/
 
 # Secrets (never commit)
 *.pem
