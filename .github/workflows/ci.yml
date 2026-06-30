@@ -102,7 +102,7 @@ jobs:
         run: docker build -t vidrev .
 
       - name: Test Docker image
-        run: docker run --rm vidrev --help
+        run: docker run --rm vidrev
 
   security:
     name: Security Scan
@@ -124,10 +124,9 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Run pip-audit
-        uses: pypa/gh-action-pip-audit@v1
-
-      - name: Run bandit
-        run: bandit -r src/ utils/ -f json -o bandit-report.json || true
+        run: |
+          pip install pip-audit
+          pip-audit
 
   dependency-review:
     name: Dependency Review

@@ -21,7 +21,9 @@ def tmp_db_path() -> str:
 
 @pytest.fixture
 def db(tmp_db_path: str) -> Database:
-    return Database(db_path=tmp_db_path)
+    database = Database(db_path=tmp_db_path)
+    yield database
+    database.close()
 
 
 def test_job_manager_create_and_get(db: Database) -> None:

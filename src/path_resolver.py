@@ -42,6 +42,9 @@ def normalize_for_env(target: str | Any, wsl_mode: str | None = None) -> str | A
         env = detect_environment()
 
     if env == "win":
+        # Don't mangle Unix-style paths (WSL interop, test fixtures)
+        if target.startswith("/"):
+            return target
         return os.path.abspath(target)
 
     is_windows_path = bool(re.match(r"^[a-zA-Z]:[\\/]", target))

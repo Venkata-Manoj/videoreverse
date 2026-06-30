@@ -49,7 +49,7 @@ def _estimate_tokens(prompt: str, timeline_frames: list[dict], video_duration: f
 
 def _clean_windows(window: deque, max_age: float) -> None:
     cutoff = time.monotonic() - max_age
-    while window and window[0] < cutoff:
+    while window and window[0] <= cutoff:
         window.popleft()
 
 
