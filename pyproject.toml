@@ -35,7 +35,7 @@ dev = [
     "pip-audit>=2.7.0",
     "numpy",
     "opencv-python-headless"
-],
+]
 web = [
     "flask>=3.0.0",
 ]
