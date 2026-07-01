@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- TBD
+
+## [2.4.0] - 2026-07-01
+
+### Added
+
 - **Git LFS** — Test videos tracked via Git LFS (`.gitattributes` for `*.mp4`, `*.mov`, `*.avi`, `*.mkv`)
 - **Gitleaks** — Secret detection wired into pre-commit hooks
 - **mypy strict mode** — `disallow_untyped_defs=true`, `disallow_incomplete_defs=true`, `python_version=3.12`
@@ -20,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CI improvements** — mypy job, pytest-cov with coverage upload, bandit security scanning
 - **Docker improvements** — Pinned base image (`python:3.12.8-slim`), health check, `.dockerignore`
 - **Documentation** — `docs/getting-started.md`, `docs/contributing.md`, `docs/faq.md`, `docs/blueprint-schema.md`
+- **CI fully green** — All 7 jobs passing after 7+ consecutive failure saga (lint, typecheck, unit tests on Ubuntu/Windows/macOS, Docker build, security scan with pip-audit + bandit)
 
 ### Changed
 
@@ -34,6 +41,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Exception chaining in `pipeline.py` and `downloader.py` (B904)
 - Unused variables in `pipeline.py` (F841)
 - Loop variable binding in lambda (B023)
+- **CI failure #1** — `pypa/gh-action-pip-audit@v1` tag missing → pinned to `v1.1`
+- **CI failure #2** — Docker CMD `--help` interpreted as module name → entrypoint now forwards args correctly
+- **CI failure #3** — Windows SQLite `PermissionError` + WSL path conversion → connection closed before cleanup, mock assertions updated
+- **CI failure #4** — Schedule trigger moved from job-level to workflow-level `on:` section
+- **CI failure #5** — ruff format fix in `pipeline.py`
+- **CI cleanup** — Removed accidentally committed coverage artifacts (7041 lines), added `coverage/` to `.gitignore`
 
 ## [2.3.0] - 2026-05-29
 
